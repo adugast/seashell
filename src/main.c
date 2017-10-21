@@ -9,12 +9,12 @@
 #include <curses.h>
 #include <term.h>
 
-#define CHAR_BS 0x08 // back space '\b'
-#define CHAR_TAB 0x09 // horizontal tab '\t'
-#define CHAR_NL 0x0A // new line '\n'
-#define CHAR_CR 0x0D // carriage return '\r'
-#define CHAR_ESC 0x1B // escape
-#define CHAR_DEL 0x7F // delete
+#define CHAR_BS     0x08 // back space '\b'
+#define CHAR_TAB    0x09 // horizontal tab '\t'
+#define CHAR_NL     0x0A // new line '\n'
+#define CHAR_CR     0x0D // carriage return '\r'
+#define CHAR_ESC    0x1B // escape
+#define CHAR_DEL    0x7F // delete
 
 #define BUFFER_SIZE 512
 
@@ -69,7 +69,7 @@ static void print_prompt(const char *prompt)
     print_fct(prompt);
 }
 
-static int print_line(struct shell *ctx, const char *line)
+static void print_line(struct shell *ctx, const char *line)
 {
     char out[255] = "\x1b[0K";
 
@@ -77,7 +77,7 @@ static int print_line(struct shell *ctx, const char *line)
     print_fct("%s%s", ctx->prompt, line);
 }
 
-static int print_cmd(const char *line)
+static void print_cmd(const char *line)
 {
     print_fct("%s", line);
 }
@@ -90,7 +90,7 @@ static int print_cmd(const char *line)
 
 extern char **environ;
 
-static int exec(const char *command, char *envp[])
+static int exec(const char *command)
 {
     char *path = NULL;
     char **tab_path = NULL;
@@ -131,7 +131,7 @@ static int exec(const char *command, char *envp[])
 static int execution(const char buffer[255])
 {
     pid_t pid = -1;
-    int status = -1;
+    //int status = -1;
     char res[255] = {0};
     ssize_t size = -1;
     int pipefd[2];
@@ -148,7 +148,7 @@ static int execution(const char buffer[255])
         close(pipefd[0]);
         dup2(pipefd[1], 1);
 
-        exec(buffer, tmp);
+        exec(buffer);
     } else if (pid > 0) {
 
         close(pipefd[1]);
@@ -316,7 +316,7 @@ static int terminate(struct shell *ctx)
 
 /////////////////////////////////////////////////////////////////////
 
-int main(int argc, char *argv[], char *envp[])
+int main()
 {
     struct shell *ctx = NULL;
 
