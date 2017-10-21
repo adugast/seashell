@@ -29,31 +29,33 @@ char **tmp = NULL;
 
 /////////////////////////////////////////////////////////////////////
 
-static int init_terminal()
-{
-    struct termios term = {0};
-
-    cfmakeraw(&term);
-
-    return tcsetattr(0, TCSANOW, &term);
-}
-
 static int get_terminal(struct termios *term)
 {
-    return tcgetattr(0, term);
+    return tcgetattr(STDIN_FILENO, term);
 }
 
 static int set_terminal(struct termios *term)
 {
-    return tcsetattr(0, TCSANOW, term);
+    return tcsetattr(STDIN_FILENO, TCSANOW, term);
+}
+
+static int init_terminal()
+{
+    struct termios term = {0};
+
+    get_terminal(&term);
+    cfmakeraw(&term);
+    term.c_oflag |= (OPOST);
+
+    return tcsetattr(STDIN_FILENO, TCSANOW, &term);
 }
 
 /////////////////////////////////////////////////////////////////////
 
 static int print_fct(const char *fmt, ...)
 {
-    va_list arg;
     char str[255] = {0};
+    va_list arg;
 
     va_start(arg, fmt);
     vsnprintf(str, 255, fmt, arg);
@@ -77,10 +79,9 @@ static int print_line(struct shell *ctx, const char *line)
 
 static int print_cmd(const char *line)
 {
-    char out[255] = "\x1b[0K";
-
-    print_fct("%s%s\r", out, line);
+    print_fct("%s", line);
 }
+
 /////////////////////////////////////////////////////////////////////
 
 #include <sys/types.h>
@@ -119,24 +120,23 @@ static int exec(const char *command, char *envp[])
 
     if (ret == -1) {
         exit(0);
- }
+    }
 
- //free
+    //free
 
- return 0;
+    return 0;
 }
 
-#include <ctype.h>
+
 static int execution(const char buffer[255])
 {
-
     pid_t pid = -1;
     int status = -1;
-
+    char res[255] = {0};
+    ssize_t size = -1;
     int pipefd[2];
 
     pipe(pipefd);
-
 
     pid = fork();
     if (pid == -1) {
@@ -144,42 +144,30 @@ static int execution(const char buffer[255])
     }
 
     if (pid == 0) {
+
         close(pipefd[0]);
         dup2(pipefd[1], 1);
+
         exec(buffer, tmp);
     } else if (pid > 0) {
 
-        char res[4096] = {0};
         close(pipefd[1]);
-        ssize_t size = read(pipefd[0], res, 4096);
-        if (size == -1) {
-            return -1;
-        } else {
+        while (size != 0) {
 
-            char buff[512] = {0};
-            int j = 0;
-
-            for (int i = 0; i < size; i++) {
-                buff[j] = res[i];
-                if (res[i] == '\n') {
-                    buff[j + 1] = '\0';
-                    print_cmd(buff);
-                    j = -1;
-                //    i++;
-//                    res[i+1] = '\r';
-                }
-                j++;
-        //       printf("%d\r\n", res[i]);
+            memset(res, 0, 255);
+            size = read(pipefd[0], res, 255);
+            if (size == -1) {
+                return -1;
+            } else {
+                 print_cmd(res);
             }
-
-         //   print_cmd(res);
-        }
-
-        if (waitpid(pid, &status, 0) == -1) {
-
         }
     }
+/*
+    if (waitpid(pid, &status, 0) == -1) {
 
+    }
+*/
     return 0;
 }
 
@@ -193,6 +181,12 @@ static int read_keyboard(struct shell *ctx, const char keycode[3], unsigned int 
         offset = 0;
         buffer[0] = '\0';
         print_prompt(ctx->prompt);
+    }
+
+    if (keycode[0] == CHAR_CR && offset == 0) {
+        write(STDIN_FILENO, "\r\n", 2);
+        print_prompt(ctx->prompt);
+        goto exit_read_keyboard;
     }
 
     memcpy(buffer+offset, keycode, len);
@@ -220,26 +214,28 @@ static int read_keyboard(struct shell *ctx, const char keycode[3], unsigned int 
                     goto exit_read_keyboard;
                 }
 
-  //              write(1, "\r\n", 2);
-   //             system("ls -l");
-//                execution(buffer);
+                write(1, "\r\n", 2);
+                execution(buffer);
 
                 memset(buffer, 0, offset);
                 offset = 0;
-                write(1, "\r\n", 2);
                 print_prompt(ctx->prompt);
+
                 goto exit_read_keyboard;
 
                 break;
             case CHAR_ESC:
+                    //TODO implement get_arrow_key();
                     if (len > 2 && buffer[offset+1] == '[') {
-//                        get_arrow_key();
                         goto exit_read_keyboard;
                     } else {
                         offset = 0;
                         buffer[offset] = '\0';
                         print_line(ctx, buffer);
                     }
+                break;
+            case CHAR_TAB:
+                // TODO implement autocompletion
                 break;
             default:
                 offset++;
@@ -327,8 +323,6 @@ int main(int argc, char *argv[], char *envp[])
     initialize(&ctx);
     interpret(ctx);
     terminate(ctx);
-
-    printf("END\n");
 
     return 0;
 }
