@@ -9,18 +9,34 @@
 #include <curses.h>
 #include <term.h>
 
+#include <signal.h>
+
+#include "string_fct.h"
+
 #define CHAR_BS     0x08 // back space '\b'
 #define CHAR_TAB    0x09 // horizontal tab '\t'
 #define CHAR_NL     0x0A // new line '\n'
 #define CHAR_CR     0x0D // carriage return '\r'
 #define CHAR_ESC    0x1B // escape
+#define CHAR_SB     0x5B // [
 #define CHAR_DEL    0x7F // delete
 
-#define BUFFER_SIZE 512
+#define CHAR_A      0x41 // [ A ETX
+#define CHAR_B      0x42 // [ B ETX
+#define CHAR_C      0x43 // [ C ETX
+#define CHAR_D      0x44 // [ D ETX
 
+#define BUFFER_LEN  512
+#define PROMPT_LEN  256
+
+
+struct history {
+    char entry[BUFFER_LEN];
+    //struct list_head;
+};
 
 struct shell {
-    char prompt[255];
+    char prompt[PROMPT_LEN];
     struct termios saved_cfg;
     bool exit;
 };
@@ -44,8 +60,11 @@ static int init_terminal()
     struct termios term = {0};
 
     get_terminal(&term);
+
     cfmakeraw(&term);
-    term.c_oflag |= (OPOST);
+
+    term.c_oflag |= (OPOST);    // enable implementatiom-defined processing
+    term.c_lflag |= (ISIG);     // active signals generation
 
     return tcsetattr(STDIN_FILENO, TCSANOW, &term);
 }
@@ -54,11 +73,11 @@ static int init_terminal()
 
 static int print_fct(const char *fmt, ...)
 {
-    char str[255] = {0};
+    char str[256] = {0};
     va_list arg;
 
     va_start(arg, fmt);
-    vsnprintf(str, 255, fmt, arg);
+    vsnprintf(str, 256, fmt, arg);
     va_end(arg);
 
     return write(1, str, strlen(str));
@@ -69,25 +88,21 @@ static void print_prompt(const char *prompt)
     print_fct(prompt);
 }
 
-static void print_line(struct shell *ctx, const char *line)
+static void print_line(const struct shell *ctx, const char *line)
 {
-    char out[255] = "\x1b[0K";
+    char out[256] = "\x1b[0K";
 
     print_fct("\r%s\r", out);
     print_fct("%s%s", ctx->prompt, line);
 }
-
+/*
 static void print_cmd(const char *line)
 {
     print_fct("%s", line);
 }
-
+*/
 /////////////////////////////////////////////////////////////////////
-
-#include <sys/types.h>
-#include <sys/wait.h>
-#include "string_fct.h"
-
+/*
 extern char **environ;
 
 static int exec(const char *command)
@@ -128,11 +143,11 @@ static int exec(const char *command)
 }
 
 
-static int execution(const char buffer[255])
+static int execution(const char *buffer)
 {
     pid_t pid = -1;
     //int status = -1;
-    char res[255] = {0};
+    char res[256] = {0};
     ssize_t size = -1;
     int pipefd[2];
 
@@ -154,30 +169,34 @@ static int execution(const char buffer[255])
         close(pipefd[1]);
         while (size != 0) {
 
-            memset(res, 0, 255);
-            size = read(pipefd[0], res, 255);
+            memset(res, 0, 256);
+            size = read(pipefd[0], res, 256);
             if (size == -1) {
                 return -1;
             } else {
-                 print_cmd(res);
+                print_cmd(res);
             }
         }
     }
-/*
-    if (waitpid(pid, &status, 0) == -1) {
+    
+       if (waitpid(pid, &status, 0) == -1) {
 
-    }
-*/
+       }
+       
     return 0;
 }
+*/
+/////////////////////////////////////////////////////////////////////
 
 static int read_keyboard(struct shell *ctx, const char keycode[3], unsigned int len)
 {
-    static char buffer[BUFFER_SIZE] = {0};
+    // DEBUG
+    // printf("[%d][%d][%d]\n", keycode[1], keycode[2], keycode[3]);
+    static char buffer[BUFFER_LEN] = {0};
     static unsigned int offset = 0;
     unsigned int i = 0;
 
-    if (offset+len >= BUFFER_SIZE) {
+    if (offset+len >= BUFFER_LEN) {
         offset = 0;
         buffer[0] = '\0';
         print_prompt(ctx->prompt);
@@ -215,7 +234,9 @@ static int read_keyboard(struct shell *ctx, const char keycode[3], unsigned int 
                 }
 
                 write(1, "\r\n", 2);
-                execution(buffer);
+
+                // TODO implement clean command execution
+                // execution(buffer);
 
                 memset(buffer, 0, offset);
                 offset = 0;
@@ -225,14 +246,12 @@ static int read_keyboard(struct shell *ctx, const char keycode[3], unsigned int 
 
                 break;
             case CHAR_ESC:
-                    //TODO implement get_arrow_key();
-                    if (len > 2 && buffer[offset+1] == '[') {
-                        goto exit_read_keyboard;
-                    } else {
-                        offset = 0;
-                        buffer[offset] = '\0';
-                        print_line(ctx, buffer);
-                    }
+                //TODO implement get_arrow_key() for history management
+                // get_arrow_key();
+
+                offset = 0;
+                memset(buffer, 0, BUFFER_LEN);
+                print_line(ctx, buffer);
                 break;
             case CHAR_TAB:
                 // TODO implement autocompletion
@@ -250,17 +269,44 @@ exit_read_keyboard:
 
 /////////////////////////////////////////////////////////////////////
 
+// ctrl + c handler for clean up
+// check if there is better solution than global variable
+static struct shell *saved;
+static int terminate(struct shell *ctx);
+static void signal_handler(__attribute__((unused)) int signum)
+{
+    write(1, "\r\n", 2);
+    terminate(saved);
+    _exit(EXIT_SUCCESS);
+}
+
+/////////////////////////////////////////////////////////////////////
+
 static int initialize(struct shell **ctx)
 {
-    struct shell *new = NULL;
     int ret = -1;
+
+    // set signal handler
+    struct sigaction action = {0};
+
+    action.sa_handler = signal_handler;
+    //action.sa_flags = SA_SIGINFO;
+
+    ret = sigaction(SIGINT, &action, NULL);
+    if (ret == -1) {
+        perror("sigaction()");
+        return -1;
+    }
+
+    // create new context
+    struct shell *new = NULL;
 
     new = calloc(1, sizeof(struct shell));
     if (new == NULL) {
         return -1;
     }
 
-    strncpy(new->prompt, "Abs0l3m>", 255);
+    memcpy(new->prompt, "Abs0l3m>", PROMPT_LEN);
 
     ret = get_terminal(&(new->saved_cfg));
     if (ret == -1) {
@@ -273,6 +319,7 @@ static int initialize(struct shell **ctx)
     }
 
     *ctx = new;
+    saved = new;
 
     return 0;
 }
@@ -285,7 +332,6 @@ static int interpret(struct shell *ctx)
 
     print_prompt(ctx->prompt);
     while (ctx->exit != 1) {
-
         memset(keycode, '\0', 3);
 
         read_size = read(STDIN_FILENO, keycode, 3);
@@ -316,13 +362,34 @@ static int terminate(struct shell *ctx)
 
 /////////////////////////////////////////////////////////////////////
 
-int main()
+int entry()
 {
+    int ret = -1;
     struct shell *ctx = NULL;
 
-    initialize(&ctx);
-    interpret(ctx);
-    terminate(ctx);
+    ret = initialize(&ctx);
+    if (ret == -1) {
+        fprintf(stderr, "initialize:failed");
+        return -1;
+    }
 
+    ret = interpret(ctx);
+    if (ret == -1) {
+        fprintf(stderr, "interpret:failed");
+        return -1;
+    }
+
+    ret = terminate(ctx);
+    if (ret == -1) {
+        fprintf(stderr, "terminate:failed");
+        return -1;
+    }
+
+    return -1;
+}
+
+int main()
+{
+    entry();
     return 0;
 }
