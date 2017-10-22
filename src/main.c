@@ -32,7 +32,6 @@
 
 struct history {
     char entry[BUFFER_LEN];
-    //struct list_head;
 };
 
 struct shell {
@@ -63,7 +62,7 @@ static int init_terminal()
 
     cfmakeraw(&term);
 
-    term.c_oflag |= (OPOST);    // enable implementatiom-defined processing
+    term.c_oflag |= (OPOST);    // enable implementation-defined processing
     term.c_lflag |= (ISIG);     // active signals generation
 
     return tcsetattr(STDIN_FILENO, TCSANOW, &term);
@@ -178,11 +177,10 @@ static int execution(const char *buffer)
             }
         }
     }
-    
        if (waitpid(pid, &status, 0) == -1) {
 
        }
-       
+
     return 0;
 }
 */
@@ -221,7 +219,7 @@ static int read_keyboard(struct shell *ctx, const char keycode[3], unsigned int 
                     print_line(ctx, buffer);
                 }
                 break;
-            case CHAR_CR: // enter
+            case CHAR_CR:
 
                 if (buffer[offset+1] == CHAR_NL || buffer[offset+1] == 0x00) {
                     buffer[offset] = '\0';
@@ -246,7 +244,7 @@ static int read_keyboard(struct shell *ctx, const char keycode[3], unsigned int 
 
                 break;
             case CHAR_ESC:
-                //TODO implement get_arrow_key() for history management
+                //TODO implement history management
                 // get_arrow_key();
 
                 offset = 0;
@@ -271,12 +269,13 @@ exit_read_keyboard:
 
 // ctrl + c handler for clean up
 // check if there is better solution than global variable
-static struct shell *saved;
+// keep global_save to clean the context in case of SIGINT
+static struct shell *global_save;
 static int terminate(struct shell *ctx);
 static void signal_handler(__attribute__((unused)) int signum)
 {
     write(1, "\r\n", 2);
-    terminate(saved);
+    terminate(global_save);
     _exit(EXIT_SUCCESS);
 }
 
@@ -290,7 +289,6 @@ static int initialize(struct shell **ctx)
     struct sigaction action = {0};
 
     action.sa_handler = signal_handler;
-    //action.sa_flags = SA_SIGINFO;
 
     ret = sigaction(SIGINT, &action, NULL);
     if (ret == -1) {
@@ -319,7 +317,8 @@ static int initialize(struct shell **ctx)
     }
 
     *ctx = new;
-    saved = new;
+    // keep global_save to clean the context in case of SIGINT
+    global_save = new;
 
     return 0;
 }
