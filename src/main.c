@@ -11,6 +11,7 @@
 
 #include <signal.h>
 
+#include "list.h"
 #include "string_fct.h"
 
 #define CHAR_BS     0x08 // back space '\b'
@@ -32,11 +33,14 @@
 
 struct history {
     char entry[BUFFER_LEN];
+    struct list head;
 };
 
 struct shell {
     char prompt[PROMPT_LEN];
     struct termios saved_cfg;
+    int history_index;
+    struct history *hist;
     bool exit;
 };
 
@@ -186,10 +190,65 @@ static int execution(const char *buffer)
 */
 /////////////////////////////////////////////////////////////////////
 
+static void get_history_entry(struct shell *ctx, char *buffer)
+{
+    struct list *nodep = NULL;
+    struct history *tmp = NULL;
+    int i = 0;
+
+    for_each(&(ctx->hist->head), nodep) {
+        if (i == ctx->history_index) {
+            tmp = container_of(nodep, struct history, head);
+            strncpy(buffer, tmp->entry, BUFFER_LEN);
+        }
+        i++;
+    }
+}
+
+static int add_history_entry(struct shell *ctx, const char *buffer)
+{
+    struct history *node = calloc(1, sizeof(struct history));
+    if (node == NULL) {
+        return -1;
+    }
+
+    strncpy(node->entry, buffer, BUFFER_LEN);
+
+    list_add_head(&(ctx->hist->head), &(node->head));
+
+    return 0;
+}
+
+/////////////////////////////////////////////////////////////////////
+
+static int read_arrow_key(struct shell *ctx, const char c)
+{
+    switch (c) {
+        case CHAR_A: // arrow up
+            //print_line(ctx, "arrow_up\n");
+            if (ctx->history_index < list_length(&(ctx->hist->head)))
+                ctx->history_index += 1;
+            break;
+        case CHAR_B: // arrow down
+            //print_line(ctx, "arrow_down\n");
+            if (ctx->history_index >= 0)
+                ctx->history_index -= 1;
+            break;
+        case CHAR_C: // arrow right
+            print_line(ctx, "arrow_right\n");
+            break;
+        case CHAR_D: // arrow left
+            print_line(ctx, "arrow_left\n");
+            break;
+    }
+
+    return 0;
+}
+
 static int read_keyboard(struct shell *ctx, const char keycode[3], unsigned int len)
 {
     // DEBUG
-    // printf("[%d][%d][%d]\n", keycode[1], keycode[2], keycode[3]);
+    // printf("[%d][%d][%d]\n", keycode[0], keycode[1], keycode[2]);
     static char buffer[BUFFER_LEN] = {0};
     static unsigned int offset = 0;
     unsigned int i = 0;
@@ -233,25 +292,43 @@ static int read_keyboard(struct shell *ctx, const char keycode[3], unsigned int 
 
                 write(1, "\r\n", 2);
 
+                if (strcmp(buffer, "\0") != 0)
+                    add_history_entry(ctx, buffer);
                 // TODO implement clean command execution
                 // execution(buffer);
 
                 memset(buffer, 0, offset);
                 offset = 0;
                 print_prompt(ctx->prompt);
+                ctx->history_index = -1;
 
                 goto exit_read_keyboard;
 
                 break;
             case CHAR_ESC:
                 //TODO implement history management
-                // get_arrow_key();
+                if (buffer[offset+1] == CHAR_SB) {
 
-                offset = 0;
-                memset(buffer, 0, BUFFER_LEN);
+                    read_arrow_key(ctx, buffer[offset+2]);
+
+                    if (ctx->history_index == -1) {
+                        offset = 0;
+                        memset(buffer, 0, BUFFER_LEN);
+                    } else {
+                        get_history_entry(ctx, buffer);
+                        offset = strlen(buffer);
+                    }
+                } else {
+                    offset = 0;
+                    memset(buffer, 0, BUFFER_LEN);
+                    print_line(ctx, buffer);
+                    ctx->history_index = -1;
+                }
+
                 print_line(ctx, buffer);
-                break;
-            case CHAR_TAB:
+
+                goto exit_read_keyboard;
+            case CHAR_TAB:;
                 // TODO implement autocompletion
                 break;
             default:
@@ -274,7 +351,7 @@ static struct shell *global_save;
 static int terminate(struct shell *ctx);
 static void signal_handler(__attribute__((unused)) int signum)
 {
-    write(1, "\r\n", 2);
+    write(1, "^C\r\n", 4);
     terminate(global_save);
     _exit(EXIT_SUCCESS);
 }
@@ -285,7 +362,18 @@ static int initialize(struct shell **ctx)
 {
     int ret = -1;
 
-    // set signal handler
+    // 1) create a new user shell context
+    struct shell *new = NULL;
+
+    new = calloc(1, sizeof(struct shell));
+    if (new == NULL) {
+        return -1;
+    }
+
+    // 2) set the user prompt
+    memcpy(new->prompt, "Abs0l3m>", PROMPT_LEN);
+
+    // 3) set signal handler for SIGINT
     struct sigaction action = {0};
 
     action.sa_handler = signal_handler;
@@ -296,29 +384,32 @@ static int initialize(struct shell **ctx)
         return -1;
     }
 
-    // create new context
-    struct shell *new = NULL;
-
-    new = calloc(1, sizeof(struct shell));
-    if (new == NULL) {
-        return -1;
-    }
-
-    memcpy(new->prompt, "Abs0l3m>", PROMPT_LEN);
-
+    // 4) save the old terminal configuration to be able to reuse it
+    // when leaving the seashell
     ret = get_terminal(&(new->saved_cfg));
     if (ret == -1) {
         return -1;
     }
 
+    // 5) initialize raw mode terminal
     ret = init_terminal();
     if (ret == -1) {
         return -1;
     }
 
-    *ctx = new;
-    // keep global_save to clean the context in case of SIGINT
+    /* 6) initialize history */
+    new->history_index = -1;
+    new->hist = calloc(1, sizeof(struct history));
+    if (new->hist == NULL) {
+        fprintf(stderr, "failed to allocate history\n");
+        return -1;
+    }
+    init_list(&(new->hist->head));
+
+    // 7) keep global_save to clean the context in case of SIGINT
+    // and retrieve the terminal context
     global_save = new;
+    *ctx = new;
 
     return 0;
 }

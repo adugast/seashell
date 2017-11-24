@@ -1,15 +1,37 @@
 #ifndef __LIST_H__
 #define __LIST_H__
 
+
 #define for_each(head, pos) \
     for (pos = (head)->next; pos != (head); pos = pos->next)
+
 
 #define container_of(ptr, type, member) \
     ((type *)((char *)(ptr) - (unsigned long)(&((type *)0)->member)))
 
+
 struct list {
     struct list *prev, *next;
 };
+
+
+static inline int list_length(struct list *head)
+{
+    int ret = -1;
+    struct list *tmp = head;
+    struct list *nodep = NULL;
+
+    if (head == NULL) {
+        return -1;
+    }
+
+    for_each(tmp, nodep) {
+        ret++;
+    }
+
+    return ret;
+}
+
 
 static inline void init_list(struct list *head)
 {
@@ -17,7 +39,8 @@ static inline void init_list(struct list *head)
     head->next = head;
 }
 
-static inline void list_insert(struct list *head, struct list *before, struct list *after)
+
+static inline void __list_insert(struct list *head, struct list *before, struct list *after)
 {
     before->next = head;
     after->prev = head;
@@ -25,14 +48,17 @@ static inline void list_insert(struct list *head, struct list *before, struct li
     head->prev = before;
 }
 
+
 static inline void list_add_head(struct list *head, struct list *entry)
 {
-    list_insert(entry, head, head->next);
+    __list_insert(entry, head, head->next);
 }
+
 
 static inline void list_add_tail(struct list *head, struct list *entry)
 {
-    list_insert(entry, head->prev, head);
+    __list_insert(entry, head->prev, head);
 }
+
 
 #endif /* __LIST_H__ */
