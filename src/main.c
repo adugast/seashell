@@ -30,6 +30,23 @@
 #define BUFFER_LEN  512
 #define PROMPT_LEN  256
 
+int tputs_cursor(const unsigned int pos_x, const unsigned int pos_y)
+{
+    int error = -1;
+
+    error = tputs(tgoto(tgetstr("cm", NULL), pos_x, pos_y), 1, putchar);
+    if (error == -1) {
+        return -1;
+    }
+
+    error = fflush(stdout);
+    if (error == EOF) {
+        return EOF;
+    }
+
+    return 0;
+}
+
 
 struct history {
     char entry[BUFFER_LEN];
@@ -226,7 +243,7 @@ static int read_arrow_key(struct shell *ctx, const char c)
     switch (c) {
         case CHAR_A: // arrow up
             //print_line(ctx, "arrow_up\n");
-            if (ctx->history_index < list_length(&(ctx->hist->head)))
+            if (ctx->history_index < (int)(list_length(&(ctx->hist->head)) - 1))
                 ctx->history_index += 1;
             break;
         case CHAR_B: // arrow down
