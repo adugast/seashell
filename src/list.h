@@ -15,19 +15,13 @@ struct list {
 };
 
 
-static inline int list_length(struct list *head)
+static inline size_t list_length(struct list *head)
 {
-    int ret = -1;
-    struct list *tmp = head;
+    size_t ret = 0;
     struct list *nodep = NULL;
 
-    if (head == NULL) {
-        return -1;
-    }
-
-    for_each(tmp, nodep) {
+    for_each(tmp, nodep)
         ret++;
-    }
 
     return ret;
 }

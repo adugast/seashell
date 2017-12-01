@@ -161,9 +161,7 @@ char **str_to_wordtab(const char *str, const char *delim)
     }
     tab[i] = NULL;
 
-    if (ptr != NULL) {
-        free(ptr);
-    }
+    free(ptr);
 
     return tab;
 }
