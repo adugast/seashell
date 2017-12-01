@@ -30,6 +30,17 @@
 #define BUFFER_LEN  512
 #define PROMPT_LEN  256
 
+// TODO Remove duplicate for last commands in history
+// TODO Implement cursor moving, left, right arrow keys
+// TODO Implement autocompletion with tabs
+// TODO Add execution part
+// TODO Redirection
+// TODO Multi-Pipes
+// TODO Configuration based on config file (prompt, colors, ...)
+// TODO Add correct arguments parsing get_opt_long (help, path config file, ...)
+// TODO ...
+
+/*
 int tputs_cursor(const unsigned int pos_x, const unsigned int pos_y)
 {
     int error = -1;
@@ -46,6 +57,7 @@ int tputs_cursor(const unsigned int pos_x, const unsigned int pos_y)
 
     return 0;
 }
+*/
 
 
 struct history {
@@ -252,7 +264,9 @@ static int read_arrow_key(struct shell *ctx, const char c)
                 ctx->history_index -= 1;
             break;
         case CHAR_C: // arrow right
-            print_line(ctx, "arrow_right\n");
+            //print_line(ctx, "arrow_right\n");
+            tputs(tgetstr("cl", NULL), 1, putchar);
+
             break;
         case CHAR_D: // arrow left
             print_line(ctx, "arrow_left\n");
