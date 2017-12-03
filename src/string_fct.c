@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 
+
 char *mystrdup(const char *s)
 {
     char *s_copy = NULL;
@@ -20,6 +21,7 @@ char *mystrdup(const char *s)
 
     return s_copy ? memcpy(s_copy, s, len) : NULL;
 }
+
 
 char *concat(const char *str1, const char *str2)
 {
@@ -45,6 +47,7 @@ char *concat(const char *str1, const char *str2)
 
     return res;
 }
+
 
 char *concats(unsigned int count, ...)
 {
@@ -88,6 +91,7 @@ char *concats(unsigned int count, ...)
     return merged_str;
 }
 
+
 int is_alpha(char c)
 {
     if ((c >= 'a' && c <= 'z') ||
@@ -99,6 +103,7 @@ int is_alpha(char c)
         return 0;
     }
 }
+
 
 size_t count_word(const char *str, const char *delim)
 {
@@ -125,6 +130,7 @@ size_t count_word(const char *str, const char *delim)
 
     return len;
 }
+
 
 char **str_to_wordtab(const char *str, const char *delim)
 {
