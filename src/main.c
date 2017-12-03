@@ -30,6 +30,7 @@
 #define BUFFER_LEN  512
 #define PROMPT_LEN  256
 
+
 // TODO Remove duplicate for last commands in history
 // TODO Implement cursor moving, left, right arrow keys
 // TODO Implement autocompletion with tabs
@@ -40,25 +41,40 @@
 // TODO Add correct arguments parsing get_opt_long (help, path config file, ...)
 // TODO ...
 
-/*
+
 int tputs_cursor(const unsigned int pos_x, const unsigned int pos_y)
 {
-    int error = -1;
+    int ret = -1;
 
-    error = tputs(tgoto(tgetstr("cm", NULL), pos_x, pos_y), 1, putchar);
-    if (error == -1) {
+    ret = tputs(tgoto(tgetstr("cm", NULL), pos_x, pos_y), 1, putchar);
+    if (ret == -1) {
         return -1;
     }
 
-    error = fflush(stdout);
-    if (error == EOF) {
+    ret = fflush(stdout);
+    if (ret == EOF) {
         return EOF;
     }
 
     return 0;
 }
-*/
 
+int tputs_capability(char *id)
+{
+    int ret = -1;
+
+    ret = tputs(tgetstr(id, NULL), 1, putchar);
+    if (ret == -1) {
+        return -1;
+    }
+
+    ret = fflush(stdout);
+    if (ret == EOF) {
+        return EOF;
+    }
+
+    return 0;
+}
 
 struct history {
     char entry[BUFFER_LEN];
@@ -89,14 +105,37 @@ static int set_terminal(struct termios *term)
 
 static int init_terminal()
 {
+    char *term_name = NULL;
     struct termios term = {0};
 
-    get_terminal(&term);
+    /*!
+     *  set direct curses interface to the terminfo capability database
+     */
+    if (getenv("TERM") == NULL) {
+        printf("environment variable TERM not set\n");
+    }
 
-    cfmakeraw(&term);
+    if (tgetent(NULL, term_name) == -1) {
+        printf("retrieve terminfo capability database failed\n");
+    }
 
-    term.c_oflag |= (OPOST);    // enable implementation-defined processing
-    term.c_lflag |= (ISIG);     // active signals generation
+    /*!
+     * cfmakeraw() sets the terminal to something like the "raw"  mode  of  the  old
+     * Version 7 terminal driver: input is available character by character, echoing
+     * is disabled, and all special processing of terminal input and output  charac‐
+     * ters is disabled.  The terminal attributes are set as follows:
+     *
+     *      termios_p->c_iflag &= ~(IGNBRK | BRKINT | PARMRK | ISTRIP
+     *                            | INLCR | IGNCR | ICRNL | IXON);
+     *      termios_p->c_oflag &= ~OPOST;
+     *      termios_p->c_lflag &= ~(ECHO | ECHONL | ICANON | ISIG | IEXTEN);
+     *      termios_p->c_cflag &= ~(CSIZE | PARENB);
+     *      termios_p->c_cflag |= CS8;
+     */
+     cfmakeraw(&term);
+
+     term.c_oflag |= (OPOST);    // enable implementation-defined processing
+     term.c_lflag |= (ISIG);     // active signals generation
 
     return tcsetattr(STDIN_FILENO, TCSANOW, &term);
 }
@@ -437,10 +476,14 @@ static int initialize(struct shell **ctx)
     }
     init_list(&(new->hist->head));
 
-    // 7) keep global_save to clean the context in case of SIGINT
-    // and retrieve the terminal context
+    /* 7) keep global_save to clean the context in case of SIGINT
+     * and retrieve the terminal context
+     */
     global_save = new;
     *ctx = new;
+
+    /* 8) clear screen */
+    tputs_capability("cl");
 
     return 0;
 }
