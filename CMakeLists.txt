@@ -16,6 +16,3 @@ add_executable(
     src/string_fct.c
 )
 
-# set the needed library
-find_package(Curses REQUIRED)
-target_link_libraries(seashell ncurses)
