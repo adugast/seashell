@@ -57,7 +57,6 @@ struct shell {
     unsigned int line_size;
 };
 
-char **tmp = NULL;
 
 /////////////////////////////////////////////////////////////////////
 
@@ -88,16 +87,18 @@ static int init_terminal()
      *      termios_p->c_cflag &= ~(CSIZE | PARENB);
      *      termios_p->c_cflag |= CS8;
      */
-     cfmakeraw(&term);
+    cfmakeraw(&term);
 
-     term.c_oflag |= (OPOST);    // enable implementation-defined processing
-     term.c_lflag |= (ISIG);     // active signals generation
+    term.c_oflag |= (OPOST);    // enable implementation-defined processing
+    term.c_lflag |= (ISIG);     // active signals generation
 
-    return tcsetattr(STDIN_FILENO, TCSANOW, &term);
+    return set_terminal(&term);
 }
 
 /////////////////////////////////////////////////////////////////////
-/*! A I N S I - E S C A P E   S E Q U E N C E S
+/*!
+ *      === A I N S I - E S C A P E   S E Q U E N C E S ===
+ *
  * man (4) console_codes
  *
  * -- CURSOR MOVEMENTS AND TERMINAL CONFIGURATION --
@@ -118,12 +119,12 @@ static int init_terminal()
  *          The values are 1-based, and default to 1 (top left corner) if omitted.
  *
  *
- * EL - Erase in Line
+ * EL - Erase Line (default: from cursor to end of line))
  * keycode: ESC [ n K
  * effect: Erases part of the line.
- *         If n is zero (or missing), clear from cursor to the end of the line.
- *         If n is one, clear from cursor to beginning of the line.
- *         If n is two, clear entire line.
+ *         If n is zero (or missing), erase from cursor to the end of line.
+ *         If n is one, erase from start of line to cursor.
+ *         If n is two, rase whole line.
  *         Cursor position does not change.
  *
  *
@@ -136,6 +137,11 @@ static int init_terminal()
  *         If n is 3, clear entire screen and delete all lines saved
  *         in the scrollback buffer (this feature was added for xterm
  *         and is supported by other terminal applications).
+ *
+ *
+ * DECIM - Set Insert Mode (default off)
+ * keycode: ESC [ 4 h
+ * effect: Set insert mode to ON
  *
  *///////////////////////////////////////////////////////////////////
 
@@ -170,7 +176,6 @@ static ssize_t set_cursor_home()
     return write(1, CUP, 6);
 }
 
-
 /* escape sequence to clear the screen */
 #define CLEAR_SCREEN "\x1B[2J"
 static ssize_t clear_screen()
@@ -179,10 +184,10 @@ static ssize_t clear_screen()
 }
 
 /* escape sequence to set the terminal in insert mode */
-#define INSERT_MODE "\x1B[4h"
+#define DECIM "\x1B[4h"
 static ssize_t set_insert_mode()
 {
-    return write(1, INSERT_MODE, 4);
+    return write(1, DECIM, 4);
 }
 
 /////////////////////////////////////////////////////////////////////
@@ -215,89 +220,14 @@ static void print_line(const struct shell *ctx, const char *line)
 }
 
 /////////////////////////////////////////////////////////////////////
-/*
-extern char **environ;
-
-static int exec(const char *command)
-{
-    char *path = NULL;
-    char **tab_path = NULL;
-    unsigned int i = 0;
-    char **argv = NULL;
-    char *filename = NULL;
-    int ret = -1;
-
-    argv = str_to_wordtab(command, " ");
-
-    path = getenv("PATH");
-    if (path == NULL) {
-
-    }
-
-    tab_path = str_to_wordtab(path, ":");
-
-    i = 0;
-    while (tab_path[i] != NULL) {
-        filename = concats(3, tab_path[i], "/", argv[0]);
-
-        ret = execve(filename, argv, environ);
-        free(filename);
-
-        i++;
-    }
-
-    if (ret == -1) {
-        exit(0);
-    }
-
-    //free
-
-    return 0;
-}
-
 
 static int execution(const char *buffer)
 {
-    pid_t pid = -1;
-    //int status = -1;
-    char res[256] = {0};
-    ssize_t size = -1;
-    int pipefd[2];
-
-    pipe(pipefd);
-
-    pid = fork();
-    if (pid == -1) {
-        return -1;
-    }
-
-    if (pid == 0) {
-
-        close(pipefd[0]);
-        dup2(pipefd[1], 1);
-
-        exec(buffer);
-    } else if (pid > 0) {
-
-        close(pipefd[1]);
-        while (size != 0) {
-
-            memset(res, 0, 256);
-            size = read(pipefd[0], res, 256);
-            if (size == -1) {
-                return -1;
-            } else {
-                print_cmd(res);
-            }
-        }
-    }
-       if (waitpid(pid, &status, 0) == -1) {
-
-       }
-
+    buffer = buffer;
+    /* execution code */
     return 0;
 }
-*/
+
 /////////////////////////////////////////////////////////////////////
 
 static void get_history_entry(struct shell *ctx, char *buffer)
@@ -331,7 +261,7 @@ static int add_history_entry(struct shell *ctx, const char *buffer)
 
 /////////////////////////////////////////////////////////////////////
 
-int insert_char(char *buffer, const char c, const unsigned int position)
+int insert_char(char *buffer, char c, unsigned int position)
 {
     size_t len = 0;
 
@@ -340,8 +270,8 @@ int insert_char(char *buffer, const char c, const unsigned int position)
     }
 
     len = strlen(buffer);
-    if (len == 0) {
-        buffer[0] = c;
+    if (len == 0 || len == position) {
+        buffer[len] = c;
         return 0;
     }
 
@@ -376,19 +306,25 @@ int remove_char(char *buffer, unsigned int position)
 
 /////////////////////////////////////////////////////////////////////
 
+static void reinit_cursor_pos(struct shell *ctx, unsigned int nb)
+{
+    ctx->pos_x = nb;
+    ctx->line_size = nb;
+}
+
 static int read_arrow_key(struct shell *ctx, const char c)
 {
     switch (c) {
         case CHAR_A: // arrow up
             if (ctx->history_index < (int)(list_length(&(ctx->hist->head)) - 1)) {
                 ctx->history_index += 1;
-                return 0;
+                return 1;
             }
             break;
         case CHAR_B: // arrow down
             if (ctx->history_index > -1) {
                 ctx->history_index -= 1;
-                return 0;
+                return 1;
             }
             break;
         case CHAR_C: // arrow right
@@ -399,51 +335,52 @@ static int read_arrow_key(struct shell *ctx, const char c)
             break;
     }
 
-    return 1;
+    return 0;
 }
 
-static void set_cursor_pos(struct shell *ctx, unsigned int nb)
-{
-    ctx->pos_x = nb;
-    ctx->line_size = nb;
-}
-
+/* M A I N   L O O P */
 static int read_keyboard(struct shell *ctx, const char keycode[3])
 {
     // DEBUG
-    // printf("[%d][%d][%d][%d]\n", keycode[0], keycode[1], keycode[2], len);
+    // printf("[%d][%d][%d]\n", keycode[0], keycode[1], keycode[2]);
     static char buffer[BUFFER_LEN] = {0};
 
-    if (isprint(keycode[0]) != 0 && keycode[0] != 126) {
+    if (isprint(keycode[0]) != 0 && keycode[0] != CHAR_DELETE) {
 
         /* insert char in buffer */
         insert_char(buffer, keycode[0], ctx->pos_x);
         /* write the char */
         write(1, &keycode[0], 1);
-        /* set usufull variable */
+        /* set usefull variable */
         ctx->pos_x += 1;
         ctx->line_size = strlen(buffer);
 
     } else {
 
+        /* handle special characters */
         switch (keycode[0]) {
             case CHAR_BS:
                 printf("BS\n");
                 break;
             case CHAR_DEL:
                 break;
-            case CHAR_DELETE:
+            case CHAR_DELETE: /* delete button */
+                remove_char(buffer, ctx->pos_x);
                 break;
             case CHAR_CR:
                 /* enter keycode */
                 if (strcmp("exit", buffer) == 0) {
                     ctx->exit = 1;
                     write(1, "\r\n", 2);
-                    goto exit_read_keyboard;
+                    return EXIT_SUCCESS;
                 }
 
                 if (strcmp(buffer, "\0") != 0)
                     add_history_entry(ctx, buffer);
+
+
+                /* execute the command */
+                execution(buffer);
 
                 /* print one new line */
                 write(1, "\r\n", 2);
@@ -451,21 +388,17 @@ static int read_keyboard(struct shell *ctx, const char keycode[3])
 
                 /* set usefull variable */
                 memset(buffer, 0, BUFFER_LEN);
-                set_cursor_pos(ctx, 0);
+                reinit_cursor_pos(ctx, 0);
                 ctx->history_index = -1;
-
                 break;
             case CHAR_ESC:
-                if (read_arrow_key(ctx, keycode[2]) == 0) {
+                if (read_arrow_key(ctx, keycode[2]) != 0) {
                     if (ctx->history_index == -1) {
-                        ctx->pos_x = 0;
-                        ctx->line_size = 0;
                         memset(buffer, 0, BUFFER_LEN);
+                        reinit_cursor_pos(ctx, 0);
                     } else {
                         get_history_entry(ctx, buffer);
-                        set_cursor_pos(ctx, strlen(buffer));
-                        //ctx->pos_x = strlen(buffer);
-                        //ctx->line_size = strlen(buffer);
+                        reinit_cursor_pos(ctx, ctx->line_size);
                     }
                     print_line(ctx, buffer);
                 }
@@ -477,115 +410,10 @@ static int read_keyboard(struct shell *ctx, const char keycode[3])
         }
     }
 
-exit_read_keyboard:
     return 0;
 }
 
-/*
-static int read_keyboard(struct shell *ctx, const char keycode[3], unsigned int len)
-{
-    // DEBUG
-    // printf("[%d][%d][%d]\n", keycode[0], keycode[1], keycode[2]);
-    static char buffer[BUFFER_LEN] = {0};
-    static unsigned int offset = 0;
-    unsigned int i = 0;
-
-    if (offset+len >= BUFFER_LEN) {
-        offset = 0;
-        buffer[0] = '\0';
-        print_prompt(ctx->prompt);
-    }
-
-    if (keycode[0] == CHAR_CR && offset == 0) {
-        write(STDIN_FILENO, "\r\n", 2);
-        print_prompt(ctx->prompt);
-        ctx->pos_x = strlen(ctx->prompt);
-        ctx->pos_y += 1;
-        goto exit_read_keyboard;
-    }
-
-    memcpy(buffer+offset, keycode, len);
-
-    for (i = 0; i < len; i++) {
-        switch (buffer[offset]) {
-            case CHAR_BS:
-            case CHAR_DEL:
-                if (offset > 0) {
-                    buffer[offset] = '\0';
-                    offset -= 1;
-                    buffer[offset] = '\0';
-                    print_line(ctx, buffer);
-                }
-                break;
-            case CHAR_CR:
-
-                ctx->pos_x = strlen(ctx->prompt);
-
-                if (buffer[offset+1] == CHAR_NL || buffer[offset+1] == 0x00) {
-                    buffer[offset] = '\0';
-                }
-
-                if (strcmp("exit", buffer) == 0) {
-                    ctx->exit = 1;
-                    write(1, "\r\n", 2);
-                    goto exit_read_keyboard;
-                }
-
-                write(1, "\r\n", 2);
-
-                if (strcmp(buffer, "\0") != 0)
-                    add_history_entry(ctx, buffer);
-                // TODO implement clean command execution
-                // execution(buffer);
-
-                memset(buffer, 0, offset);
-                offset = 0;
-                print_prompt(ctx->prompt);
-                ctx->history_index = -1;
-
-                goto exit_read_keyboard;
-
-                break;
-            case CHAR_ESC:
-                //TODO implement history management
-                if (buffer[offset+1] == CHAR_SB) {
-
-                    read_arrow_key(ctx, buffer[offset+2]);
-
-//                    if (ctx->history_index == -1) {
-//                        offset = 0;
-//                        memset(buffer, 0, BUFFER_LEN);
-//                    } else {
-//                        get_history_entry(ctx, buffer);
-//                        offset = strlen(buffer);
-//                   }
-                } else {
-  //                  offset = 0;
-  //                  memset(buffer, 0, BUFFER_LEN);
-  //                  print_line(ctx, buffer);
-  //                  ctx->history_index = -1;
-                }
-
-//                print_line(ctx, buffer);
-
-                goto exit_read_keyboard;
-            case CHAR_TAB:;
-                // TODO implement autocompletion
-                break;
-            default:
-                offset++;
-                ctx->pos_x++;
-                print_line(ctx, buffer);
-                break;
-        }
-    }
-
-exit_read_keyboard:
-    return 0;
-}
-*/
 /////////////////////////////////////////////////////////////////////
-
 
 // ctrl + c handler for clean up
 // check if there is better solution than global variable
@@ -640,12 +468,12 @@ static int initialize(struct shell **ctx)
         return -1;
     }
 
-    // 6) initialize cursor position
-    new->pos_x = 0;
-    new->line_size = 0;
+    // 6) initialize terminal and cursor position
     clear_screen();
     set_cursor_home();
     set_insert_mode();
+    new->pos_x = 0;
+    new->line_size = 0;
 
     /* 7) initialize history */
     new->history_index = -1;
@@ -672,6 +500,7 @@ static int interpret(struct shell *ctx)
 
     print_prompt(ctx->prompt);
     while (ctx->exit != 1) {
+
         memset(keycode, '\0', 3);
 
         read_size = read(STDIN_FILENO, keycode, 3);
