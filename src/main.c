@@ -133,7 +133,7 @@ static int init_terminal()
  * effect: Clears part of the screen.
  *         If n is 0 (or missing), clear from cursor to end of screen.
  *         If n is 1, clear from cursor to beginning of the screen.
- *         If n is 2, clear entire screen (and moves cursor to upper left on DOS ANSI.SYS).
+ *         If n is 2, clear entire screen (and moves cursor to upper left).
  *         If n is 3, clear entire screen and delete all lines saved
  *         in the scrollback buffer (this feature was added for xterm
  *         and is supported by other terminal applications).
@@ -221,11 +221,58 @@ static void print_line(const struct shell *ctx, const char *line)
 }
 
 /////////////////////////////////////////////////////////////////////
+/*
+#include <sys/types.h>
+#include <sys/wait.h>
 
-static int execution(const char *buffer)
+char **parse_buffer(char *buffer)
+{
+    char **command = NULL;
+    char *token = NULL;
+    char *save_ptr = NULL;
+    int index = 0;
+    size_t nb_token = -1;
+
+    nb_token = count_word(buffer, " ");
+    command = calloc(nb_token + 1, sizeof(char *));
+
+    token = strtok_r(buffer, " ", &save_ptr);
+    while (token != NULL) {
+        command[index] = token;
+        index++;
+        token = strtok_r(NULL, " ", &save_ptr);
+    }
+
+    command[index] = NULL;
+
+    return command;
+}
+*/
+static int execution(char *buffer)
 {
     buffer = buffer;
-    /* execution code */
+    /*
+    int ret = -1;
+    pid_t pid = -1;
+    char **command = parse_buffer(buffer);
+
+    pid = fork();
+    if (pid == 0) {
+        ret = execvp(command[0], command);
+        if (ret == -1) {
+            perror("execvp");
+            exit(EXIT_SUCCESS);
+        }
+    } else {
+        ret = waitpid(pid, NULL, 0);
+        if (ret == -1) {
+            perror("waitpid");
+            exit(0);
+        }
+    }
+
+    free(command);
+*/
     return 0;
 }
 
@@ -266,10 +313,6 @@ int insert_char(char *buffer, char c, unsigned int position)
 {
     size_t len = 0;
 
-    if (buffer == NULL) {
-        return -1;
-    }
-
     len = strlen(buffer);
     if (len == 0 || len == position) {
         buffer[len] = c;
@@ -289,10 +332,6 @@ int insert_char(char *buffer, char c, unsigned int position)
 int remove_char(char *buffer, unsigned int position)
 {
     size_t len = 0;
-
-    if (buffer == NULL) {
-        return -1;
-    }
 
     len = strlen(buffer);
 
@@ -380,7 +419,6 @@ static int read_keyboard(struct shell *ctx, const char keycode[3])
 
                 if (strcmp(buffer, "\0") != 0)
                     add_history_entry(ctx, buffer);
-
 
                 /* execute the command */
                 execution(buffer);
@@ -482,7 +520,6 @@ static int initialize(struct shell **ctx)
     new->history_index = -1;
     new->hist = calloc(1, sizeof(struct history));
     if (new->hist == NULL) {
-        fprintf(stderr, "failed to allocate history\n");
         return -1;
     }
     init_list(&(new->hist->head));
@@ -526,6 +563,14 @@ static int terminate(struct shell *ctx)
         return -1;
     }
 
+    struct history *tmp = NULL;
+    struct list *nodep = NULL;
+    for_each(&(ctx->hist->head), nodep) {
+        tmp = container_of(nodep, struct history, head);
+        free(tmp);
+    }
+
+    free(ctx->hist);
     free(ctx);
 
     return 0;

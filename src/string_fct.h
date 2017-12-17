@@ -5,7 +5,7 @@
 char *mystrdup(const char *s);
 char *concat(const char str1, const char *str2);
 char *concats(unsigned int count, ...);
-size_t count_word(const char *str);
+size_t count_word(const char *str, const char *delim);
 char **str_to_wordtab(const char *str, const char *delim);
 
 
