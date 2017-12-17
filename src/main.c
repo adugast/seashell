@@ -194,14 +194,15 @@ static ssize_t set_insert_mode()
 
 static int print_fct(const char *fmt, ...)
 {
+    int ret = -1;
     char str[256] = {0};
     va_list arg;
 
     va_start(arg, fmt);
-    vsnprintf(str, 256, fmt, arg);
+    ret = vsnprintf(str, 256, fmt, arg);
     va_end(arg);
 
-    return write(1, str, strlen(str));
+    return write(1, str, ret);
 }
 
 static void print_prompt(const char *prompt)
@@ -362,10 +363,12 @@ static int read_keyboard(struct shell *ctx, const char keycode[3])
             case CHAR_BS:
                 printf("BS\n");
                 break;
-            case CHAR_DEL:
+            case CHAR_DEL: /* backspace button */
                 break;
             case CHAR_DELETE: /* delete button */
                 remove_char(buffer, ctx->pos_x);
+                reinit_cursor_pos(ctx, strlen(buffer));
+                print_line(ctx, buffer);
                 break;
             case CHAR_CR:
                 /* enter keycode */
@@ -398,7 +401,7 @@ static int read_keyboard(struct shell *ctx, const char keycode[3])
                         reinit_cursor_pos(ctx, 0);
                     } else {
                         get_history_entry(ctx, buffer);
-                        reinit_cursor_pos(ctx, ctx->line_size);
+                        reinit_cursor_pos(ctx, strlen(buffer));
                     }
                     print_line(ctx, buffer);
                 }
