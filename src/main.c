@@ -346,7 +346,7 @@ int remove_char(char *buffer, unsigned int position)
 
 /////////////////////////////////////////////////////////////////////
 
-static void reinit_cursor_pos(struct shell *ctx, unsigned int nb)
+static void set_cursor_pos(struct shell *ctx, unsigned int nb)
 {
     ctx->pos_x = nb;
     ctx->line_size = nb;
@@ -406,7 +406,7 @@ static int read_keyboard(struct shell *ctx, const char keycode[3])
                 break;
             case CHAR_DELETE: /* delete button */
                 remove_char(buffer, ctx->pos_x);
-                reinit_cursor_pos(ctx, strlen(buffer));
+                set_cursor_pos(ctx, strlen(buffer));
                 print_line(ctx, buffer);
                 break;
             case CHAR_CR:
@@ -429,17 +429,17 @@ static int read_keyboard(struct shell *ctx, const char keycode[3])
 
                 /* set usefull variable */
                 memset(buffer, 0, BUFFER_LEN);
-                reinit_cursor_pos(ctx, 0);
+                set_cursor_pos(ctx, 0);
                 ctx->history_index = -1;
                 break;
             case CHAR_ESC:
                 if (read_arrow_key(ctx, keycode[2]) != 0) {
                     if (ctx->history_index == -1) {
                         memset(buffer, 0, BUFFER_LEN);
-                        reinit_cursor_pos(ctx, 0);
+                        set_cursor_pos(ctx, 0);
                     } else {
                         get_history_entry(ctx, buffer);
-                        reinit_cursor_pos(ctx, strlen(buffer));
+                        set_cursor_pos(ctx, strlen(buffer));
                     }
                     print_line(ctx, buffer);
                 }
@@ -511,10 +511,9 @@ static int initialize(struct shell **ctx)
 
     // 6) initialize terminal and cursor position
     clear_screen();
-    set_cursor_home();
     set_insert_mode();
-    new->pos_x = 0;
-    new->line_size = 0;
+    set_cursor_home();
+    set_cursor_pos(new, 0);
 
     /* 7) initialize history */
     new->history_index = -1;
