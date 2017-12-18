@@ -191,6 +191,20 @@ static ssize_t set_insert_mode()
     return write(1, DECIM, 4);
 }
 
+/* escape sequence to save cursor position */
+#define SCP "\x1B[s"
+static ssize_t save_cursor_pos()
+{
+    return write(1, SCP, 3);
+}
+
+/* escape sequence to restore cursor position */
+#define RCP "\x1B[u"
+static ssize_t restore_cursor_pos()
+{
+    return write(1, RCP, 3);
+}
+
 /////////////////////////////////////////////////////////////////////
 
 static int print_fct(const char *fmt, ...)
@@ -267,7 +281,7 @@ static int execution(char *buffer)
         ret = waitpid(pid, NULL, 0);
         if (ret == -1) {
             perror("waitpid");
-            exit(0);
+            exit(EXIT_SUCCESS);
         }
     }
 
@@ -399,15 +413,28 @@ static int read_keyboard(struct shell *ctx, const char keycode[3])
 
         /* handle special characters */
         switch (keycode[0]) {
+            case 0x03: /* handle ctrl+c here ? */
+                break;
             case CHAR_BS:
                 printf("BS\n");
                 break;
             case CHAR_DEL: /* backspace button */
+                if (ctx->pos_x > 0) {
+                    save_cursor_pos();
+                    ctx->pos_x -= 1;
+                    remove_char(buffer, ctx->pos_x);
+                    ctx->line_size -= 1;
+                    print_line(ctx, buffer);
+                    restore_cursor_pos();
+                    cursor_left(ctx);
+                }
                 break;
             case CHAR_DELETE: /* delete button */
+                save_cursor_pos();
                 remove_char(buffer, ctx->pos_x);
-                set_cursor_pos(ctx, strlen(buffer));
+                ctx->line_size -= 1;
                 print_line(ctx, buffer);
+                restore_cursor_pos();
                 break;
             case CHAR_CR:
                 /* enter keycode */
@@ -463,7 +490,7 @@ static void signal_handler(__attribute__((unused)) int signum)
 {
     write(1, "^C\r\n", 4);
     terminate(global_save);
-    _exit(EXIT_SUCCESS);
+    exit(EXIT_SUCCESS);
 }
 
 /////////////////////////////////////////////////////////////////////
@@ -486,7 +513,9 @@ static int initialize(struct shell **ctx)
     // 3) set signal handler for SIGINT
     struct sigaction action = {0};
 
+    // sigemptyset(&action.sa_mask);
     action.sa_handler = signal_handler;
+    // action.sa_flags = 0;
 
     ret = sigaction(SIGINT, &action, NULL);
     if (ret == -1) {
