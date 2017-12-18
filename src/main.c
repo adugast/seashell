@@ -325,36 +325,40 @@ static int add_history_entry(struct shell *ctx, const char *buffer)
 
 /////////////////////////////////////////////////////////////////////
 
-int insert_char(char *buffer, char c, unsigned int position)
+static int insert_char(char *buffer, char c, unsigned int pos)
 {
-    size_t len = 0;
+    size_t len = strlen(buffer);
 
-    len = strlen(buffer);
-    if (len == 0 || len == position) {
-        buffer[len] = c;
+    if (len == 0) {
+        buffer[0] = c;
         return 0;
     }
 
-    while (len > position) {
+    while (len > pos) {
         buffer[len + 1] = buffer[len];
         len--;
     }
 
-    buffer[position] = c;
+    buffer[len + 1] = buffer[len];
+    buffer[len] = c;
 
     return 0;
 }
 
-int remove_char(char *buffer, unsigned int position)
+static int remove_char(char *buffer, unsigned int pos)
 {
-    size_t len = 0;
+    size_t len = strlen(buffer);
 
-    len = strlen(buffer);
+    if (pos >= len) {
+        buffer[len - 1] = '\0';
+        return 0;
+    }
 
-    buffer[position] = '\0';
-    while (position < len) {
-        buffer[position] = buffer[position + 1];
-        position++;
+    buffer[pos] = '\0';
+
+    while (pos < len) {
+        buffer[pos] = buffer[pos + 1];
+        pos++;
     }
 
     return 0;
@@ -415,8 +419,6 @@ static int read_keyboard(struct shell *ctx, const char keycode[3])
 
         /* handle special characters */
         switch (keycode[0]) {
-            case 0x03: /* handle ctrl+c here ? */
-                break;
             case CHAR_BS:
                 printf("BS\n");
                 break;
@@ -425,18 +427,21 @@ static int read_keyboard(struct shell *ctx, const char keycode[3])
                     save_cursor_pos();
                     ctx->pos_x -= 1;
                     remove_char(buffer, ctx->pos_x);
-                    ctx->line_size -= 1;
+                    ctx->pos_x += 1;
                     print_line(ctx, buffer);
                     restore_cursor_pos();
                     cursor_left(ctx);
+                    ctx->line_size -= 1;
                 }
                 break;
             case CHAR_DELETE: /* delete button */
-                save_cursor_pos();
-                remove_char(buffer, ctx->pos_x);
-                ctx->line_size -= 1;
-                print_line(ctx, buffer);
-                restore_cursor_pos();
+                if (ctx->pos_x < ctx->line_size) {
+                    save_cursor_pos();
+                    remove_char(buffer, ctx->pos_x);
+                    ctx->line_size -= 1;
+                    print_line(ctx, buffer);
+                    restore_cursor_pos();
+                }
                 break;
             case CHAR_CR:
                 /* enter keycode */
