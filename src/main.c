@@ -67,7 +67,7 @@ static int get_terminal(struct termios *term)
 
 static int set_terminal(struct termios *term)
 {
-    return tcsetattr(STDIN_FILENO, TCSANOW, term);
+    return tcsetattr(STDIN_FILENO, TCSADRAIN, term);
 }
 
 static int init_terminal()
@@ -89,6 +89,7 @@ static int init_terminal()
      */
     cfmakeraw(&term);
 
+    term.c_oflag |= (ONLCR);    // map NL to CR-NL on output
     term.c_oflag |= (OPOST);    // enable implementation-defined processing
     term.c_lflag |= (ISIG);     // active signals generation
 
@@ -221,7 +222,7 @@ static void print_line(const struct shell *ctx, const char *line)
 }
 
 /////////////////////////////////////////////////////////////////////
-/*
+
 #include <sys/types.h>
 #include <sys/wait.h>
 
@@ -247,20 +248,19 @@ char **parse_buffer(char *buffer)
 
     return command;
 }
-*/
+
 static int execution(char *buffer)
 {
-    buffer = buffer;
-    /*
     int ret = -1;
     pid_t pid = -1;
     char **command = parse_buffer(buffer);
 
     pid = fork();
     if (pid == 0) {
+        write(1, "\r\n", 2);
         ret = execvp(command[0], command);
         if (ret == -1) {
-            perror("execvp");
+            fprintf(stderr, "seashell: %s: command not found\n", command[0]);
             exit(EXIT_SUCCESS);
         }
     } else {
@@ -272,7 +272,7 @@ static int execution(char *buffer)
     }
 
     free(command);
-*/
+
     return 0;
 }
 
@@ -423,8 +423,6 @@ static int read_keyboard(struct shell *ctx, const char keycode[3])
                 /* execute the command */
                 execution(buffer);
 
-                /* print one new line */
-                write(1, "\r\n", 2);
                 print_prompt(ctx->prompt);
 
                 /* set usefull variable */
