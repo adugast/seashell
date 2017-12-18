@@ -93,6 +93,8 @@ static int init_terminal()
     term.c_oflag |= (OPOST);    // enable implementation-defined processing
     term.c_lflag |= (ISIG);     // active signals generation
 
+    term.c_cc[VINTR] = 3;       // set SIGINT signal
+
     return set_terminal(&term);
 }
 
