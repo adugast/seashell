@@ -52,9 +52,9 @@ struct shell {
     struct termios saved_cfg;
     int history_index;
     struct history *hist;
-    bool exit;
     unsigned int pos_x;
     unsigned int line_size;
+    bool exit;
 };
 
 
@@ -145,6 +145,16 @@ static int init_terminal()
  * DECIM - Set Insert Mode (default off)
  * keycode: ESC [ 4 h
  * effect: Set insert mode to ON
+ *
+ *
+ * SCP - Save Cursor Position
+ * keycode: ESC [ s
+ * effect: Saves the cursor position.
+ *
+ *
+ * RCP - Restaure Cursor Position
+ * keycode: ESC [ u
+ * effect: Restaures the cursor position.
  *
  *///////////////////////////////////////////////////////////////////
 
