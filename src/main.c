@@ -595,11 +595,11 @@ static int initialize(struct shell **ctx)
     memcpy(new->prompt, "Abs0l3m>", PROMPT_LEN);
 
     // 3) set signal handler for SIGINT
-    struct sigaction action = {0};
+    struct sigaction action;
 
-    // sigemptyset(&action.sa_mask);
     action.sa_handler = signal_handler;
-    // action.sa_flags = 0;
+    sigemptyset(&action.sa_mask);
+    action.sa_flags = 0;
 
     ret = sigaction(SIGINT, &action, NULL);
     if (ret == -1) {
