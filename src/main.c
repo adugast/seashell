@@ -242,7 +242,51 @@ static void print_line(const struct shell *ctx, const char *line)
 #include <sys/types.h>
 #include <sys/wait.h>
 
-char **parse_buffer(char *buffer)
+static void redirect(int oldfd, int newfd)
+{
+    if (oldfd != newfd) {
+        if (dup2(oldfd, newfd) != -1) {
+            close(oldfd);
+        } else {
+            perror("dup2()");
+            exit(0);
+        }
+    }
+}
+
+static void pipeline(char **cmds[], size_t pos, int in_fd)
+{
+    if (cmds[pos + 1] == NULL) {
+        redirect(in_fd, STDIN_FILENO);
+        execvp(cmds[pos][0], cmds[pos]);
+        fprintf(stderr, "seashell: %s: command not found\n", cmds[pos][0]);
+        exit(0);
+    } else {
+        int pipefd[2] = {0};
+        if (pipe(pipefd) == -1) {
+            perror("pipe()");
+            exit(0);
+        }
+        switch(fork()) {
+            case -1:
+                perror("fork()");
+                exit(0);
+            case 0:
+                close(pipefd[0]);
+                redirect(in_fd, STDIN_FILENO);
+                redirect(pipefd[1], STDOUT_FILENO);
+                execvp(cmds[pos][0], cmds[pos]);
+                fprintf(stderr, "seashell: %s: command not found\n", cmds[pos][0]);
+                exit(0);
+            default:
+                close(pipefd[1]);
+                close(in_fd);
+                pipeline(cmds, pos + 1, pipefd[0]);
+        }
+    }
+}
+
+static char **parse_buffer(char *buffer, const char *delim)
 {
     char **command = NULL;
     char *token = NULL;
@@ -250,14 +294,14 @@ char **parse_buffer(char *buffer)
     int index = 0;
     size_t nb_token = -1;
 
-    nb_token = count_word(buffer, " ");
+    nb_token = count_word(buffer, delim);
     command = calloc(nb_token + 1, sizeof(char *));
 
-    token = strtok_r(buffer, " ", &save_ptr);
+    token = strtok_r(buffer, delim, &save_ptr);
     while (token != NULL) {
         command[index] = token;
         index++;
-        token = strtok_r(NULL, " ", &save_ptr);
+        token = strtok_r(NULL, delim, &save_ptr);
     }
 
     command[index] = NULL;
@@ -269,17 +313,34 @@ static int execution(char *buffer)
 {
     int ret = -1;
     pid_t pid = -1;
-    char **command = parse_buffer(buffer);
+    char **cmds[10] = {0}; /* TODO: count nbr of piped command to allocate correct size */
+    unsigned int i = 0;
+    char *token = NULL;
+    char *save_ptr = NULL;
+
+    /*
+    char **cmd_line = parse_buffer(buffer, "|");
+    while (cmd_line[i] != NULL) {
+        cmds[i] = parse_buffer(cmd_line[i], " ");
+        free(cmd_line[i]);
+        i++;
+    }
+    */
+
+    /* creates cmds array to be executed */
+    token = strtok_r(buffer, "|", &save_ptr);
+    while (token != NULL) {
+        cmds[i] = parse_buffer(token, " ");
+        i++;
+        token = strtok_r(NULL, "|", &save_ptr);
+    }
+    cmds[i] = NULL;
 
     pid = fork();
-    if (pid == 0) {
+    if (pid == 0) { /* child */
         write(1, "\r\n", 2);
-        ret = execvp(command[0], command);
-        if (ret == -1) {
-            fprintf(stderr, "seashell: %s: command not found\n", command[0]);
-            exit(EXIT_SUCCESS);
-        }
-    } else {
+        pipeline(cmds, 0, STDIN_FILENO);
+    } else { /* parent */
         ret = waitpid(pid, NULL, 0);
         if (ret == -1) {
             perror("waitpid");
@@ -287,7 +348,12 @@ static int execution(char *buffer)
         }
     }
 
-    free(command);
+    /*
+    i = 0;
+    while (cmds[i] != NULL) {
+        free(cmds[i]);
+        i++;
+    }*/
 
     return 0;
 }
@@ -455,6 +521,7 @@ static int read_keyboard(struct shell *ctx, const char keycode[3])
                     add_history_entry(ctx, buffer);
 
                 /* execute the command */
+                // write(1, "\r\n", 2);
                 execution(buffer);
 
                 print_prompt(ctx->prompt);
