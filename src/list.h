@@ -2,8 +2,14 @@
 #define __LIST_H__
 
 
-#define for_each(head, pos) \
-    for (pos = (head)->next; pos != (head); pos = pos->next)
+#define CONCAT_(x,y) x##y
+#define CONCAT(x,y) CONCAT_(x,y)
+#define UNIQUE CONCAT(var_, __LINE__)
+
+
+#define for_each(head, nodep) \
+    __typeof__(nodep) UNIQUE; \
+    for (nodep = (head)->next; UNIQUE = nodep ? nodep->next : NULL, nodep && (nodep != (head)); nodep = UNIQUE)
 
 
 #define container_of(ptr, type, member) \
@@ -11,7 +17,7 @@
 
 
 struct list {
-    struct list *prev, *next;
+    struct list *next, *prev;
 };
 
 
@@ -34,12 +40,12 @@ static inline void init_list(struct list *head)
 }
 
 
-static inline void __list_insert(struct list *head, struct list *before, struct list *after)
+static inline void __list_insert(struct list *entry, struct list *before, struct list *after)
 {
-    before->next = head;
-    after->prev = head;
-    head->next = after;
-    head->prev = before;
+    before->next = entry;
+    after->prev = entry;
+    entry->next = after;
+    entry->prev = before;
 }
 
 
@@ -52,6 +58,17 @@ static inline void list_add_head(struct list *head, struct list *entry)
 static inline void list_add_tail(struct list *head, struct list *entry)
 {
     __list_insert(entry, head->prev, head);
+}
+
+
+static inline void list_delete(struct list *entry)
+{
+    if (entry->next && entry->prev) {
+        entry->next->prev = entry->prev;
+        entry->prev->next = entry->next;
+    }
+    entry->next = NULL;
+    entry->prev = NULL;
 }
 
 
