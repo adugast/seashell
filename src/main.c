@@ -8,7 +8,7 @@
 #include <signal.h>
 #include <ctype.h>
 
-#include "list.h"
+#include "seashell.h"
 #include "string_fct.h"
 
 
@@ -26,38 +26,9 @@
 #define CHAR_C      0x43 // [ C ETX
 #define CHAR_D      0x44 // [ D ETX
 
-#define BUFFER_LEN  256
-#define PROMPT_LEN  256
-
-
-// TODO Remove duplicate for last commands in history
-// TODO Implement cursor moving, left, right arrow keys
-// TODO Implement autocompletion with tabs
-// TODO Add execution part
-// TODO Redirection
-// TODO Multi-Pipes
-// TODO Configuration based on config file (prompt, colors, ...)
-// TODO Add correct arguments parsing get_opt_long (help, path config file, ...)
-// TODO ...
-
-
-struct history {
-    char entry[BUFFER_LEN];
-    struct list node;
-};
-
-struct shell {
-    char prompt[PROMPT_LEN];
-    unsigned int pos_x;
-    unsigned int line_size;
-    int history_index;
-    struct list history_head;
-    struct termios saved_cfg;
-    bool exit;
-};
-
 
 /////////////////////////////////////////////////////////////////////
+
 
 static int get_terminal(struct termios *term)
 {
@@ -673,7 +644,6 @@ static int terminate(struct shell *ctx)
         free(tmp);
     }
 
-//    free(ctx->history_head);
     free(ctx);
 
     return 0;
@@ -707,8 +677,9 @@ int entry()
     return -1;
 }
 
-int main()
+int main(int argc, char *argv[])
 {
-    entry();
+    get_arguments(argc, argv);
+    entry(argc, argv);
     return 0;
 }
