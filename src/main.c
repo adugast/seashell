@@ -11,7 +11,6 @@
 #include "list.h"
 #include "string_fct.h"
 
-#define DELETE_CHAR     "dc"
 
 #define CHAR_BS     0x08 // back space '\b'
 #define CHAR_TAB    0x09 // horizontal tab '\t'
@@ -27,7 +26,7 @@
 #define CHAR_C      0x43 // [ C ETX
 #define CHAR_D      0x44 // [ D ETX
 
-#define BUFFER_LEN  512
+#define BUFFER_LEN  256
 #define PROMPT_LEN  256
 
 
@@ -44,16 +43,16 @@
 
 struct history {
     char entry[BUFFER_LEN];
-    struct list head;
+    struct list node;
 };
 
 struct shell {
     char prompt[PROMPT_LEN];
-    struct termios saved_cfg;
-    int history_index;
-    struct history *hist;
     unsigned int pos_x;
     unsigned int line_size;
+    int history_index;
+    struct list history_head;
+    struct termios saved_cfg;
     bool exit;
 };
 
@@ -222,11 +221,11 @@ static ssize_t restore_cursor_pos()
 static int print_fct(const char *fmt, ...)
 {
     int ret = -1;
-    char str[256] = {0};
+    char str[BUFFER_LEN] = {0};
     va_list arg;
 
     va_start(arg, fmt);
-    ret = vsnprintf(str, 256, fmt, arg);
+    ret = vsnprintf(str, BUFFER_LEN, fmt, arg);
     va_end(arg);
 
     return write(1, str, ret);
@@ -248,19 +247,18 @@ static void print_line(const struct shell *ctx, const char *line)
 }
 
 /////////////////////////////////////////////////////////////////////
-
+/*
 #include <sys/types.h>
 #include <sys/wait.h>
 
 static void redirect(int oldfd, int newfd)
 {
     if (oldfd != newfd) {
-        if (dup2(oldfd, newfd) != -1) {
-            close(oldfd);
-        } else {
+        if (dup2(oldfd, newfd) == -1) {
             perror("dup2()");
             exit(0);
         }
+        close(oldfd);
     }
 }
 
@@ -323,21 +321,20 @@ static int execution(char *buffer)
 {
     int ret = -1;
     pid_t pid = -1;
-    char **cmds[10] = {0}; /* TODO: count nbr of piped command to allocate correct size */
+    char **cmds[10] = {0}; // TODO: count nbr of piped command to allocate correct size
     unsigned int i = 0;
     char *token = NULL;
     char *save_ptr = NULL;
 
-    /*
-    char **cmd_line = parse_buffer(buffer, "|");
-    while (cmd_line[i] != NULL) {
-        cmds[i] = parse_buffer(cmd_line[i], " ");
-        free(cmd_line[i]);
-        i++;
-    }
-    */
+    //char **cmd_line = parse_buffer(buffer, "|");
+    //while (cmd_line[i] != NULL) {
+    //    cmds[i] = parse_buffer(cmd_line[i], " ");
+    //    free(cmd_line[i]);
+    //    i++;
+    //}
 
-    /* creates cmds array to be executed */
+
+    // creates cmds array to be executed
     token = strtok_r(buffer, "|", &save_ptr);
     while (token != NULL) {
         cmds[i] = parse_buffer(token, " ");
@@ -347,10 +344,10 @@ static int execution(char *buffer)
     cmds[i] = NULL;
 
     pid = fork();
-    if (pid == 0) { /* child */
+    if (pid == 0) { // child
         write(1, "\r\n", 2);
         pipeline(cmds, 0, STDIN_FILENO);
-    } else { /* parent */
+    } else { // parent
         ret = waitpid(pid, NULL, 0);
         if (ret == -1) {
             perror("waitpid");
@@ -358,16 +355,15 @@ static int execution(char *buffer)
         }
     }
 
-    /*
     i = 0;
     while (cmds[i] != NULL) {
         free(cmds[i]);
         i++;
-    }*/
+    }
 
     return 0;
 }
-
+*/
 /////////////////////////////////////////////////////////////////////
 
 static void get_history_entry(struct shell *ctx, char *buffer)
@@ -376,25 +372,25 @@ static void get_history_entry(struct shell *ctx, char *buffer)
     struct history *tmp = NULL;
     int i = 0;
 
-    for_each(&(ctx->hist->head), nodep) {
+    for_each(&(ctx->history_head), nodep) {
         if (i == ctx->history_index) {
-            tmp = container_of(nodep, struct history, head);
+            tmp = container_of(nodep, struct history, node);
             strncpy(buffer, tmp->entry, BUFFER_LEN);
         }
         i++;
     }
 }
 
-static int add_history_entry(struct shell *ctx, const char *buffer)
+static int add_history_entry(struct list *list, const char *buffer)
 {
-    struct history *node = calloc(1, sizeof(struct history));
-    if (node == NULL) {
+    struct history *new = calloc(1, sizeof(struct history));
+    if (new == NULL) {
         return -1;
     }
 
-    strncpy(node->entry, buffer, BUFFER_LEN);
+    strncpy(new->entry, buffer, BUFFER_LEN);
 
-    list_add_head(&(ctx->hist->head), &(node->head));
+    list_add_head(list, &(new->node));
 
     return 0;
 }
@@ -452,7 +448,7 @@ static int read_arrow_key(struct shell *ctx, const char c)
 {
     switch (c) {
         case CHAR_A: // arrow up
-            if (ctx->history_index < (int)(list_length(&(ctx->hist->head)) - 1)) {
+            if (ctx->history_index < (int)(list_length(&(ctx->history_head)) - 1)) {
                 ctx->history_index += 1;
                 return 1;
             }
@@ -528,11 +524,11 @@ static int read_keyboard(struct shell *ctx, const char keycode[3])
                 }
 
                 if (strcmp(buffer, "\0") != 0)
-                    add_history_entry(ctx, buffer);
+                    add_history_entry(&(ctx->history_head), buffer);
 
                 /* execute the command */
-                // write(1, "\r\n", 2);
-                execution(buffer);
+                write(1, "\r\n", 2);
+                //execution(buffer);
 
                 print_prompt(ctx->prompt);
 
@@ -592,7 +588,7 @@ static int initialize(struct shell **ctx)
     }
 
     // 2) set the user prompt
-    memcpy(new->prompt, "Abs0l3m>", PROMPT_LEN);
+    memcpy(new->prompt, "Cli>", PROMPT_LEN);
 
     // 3) set signal handler for SIGINT
     struct sigaction action;
@@ -627,12 +623,8 @@ static int initialize(struct shell **ctx)
     set_cursor_pos(new, 0);
 
     /* 7) initialize history */
+    init_list(&(new->history_head));
     new->history_index = -1;
-    new->hist = calloc(1, sizeof(struct history));
-    if (new->hist == NULL) {
-        return -1;
-    }
-    init_list(&(new->hist->head));
 
     /* 8) keep global_save to clean the context in case of SIGINT
      * and retrieve the terminal context
@@ -675,12 +667,13 @@ static int terminate(struct shell *ctx)
 
     struct history *tmp = NULL;
     struct list *nodep = NULL;
-    for_each(&(ctx->hist->head), nodep) {
-        tmp = container_of(nodep, struct history, head);
+    for_each(&(ctx->history_head), nodep) {
+        tmp = container_of(nodep, struct history, node);
+        list_delete(nodep);
         free(tmp);
     }
 
-    free(ctx->hist);
+//    free(ctx->history_head);
     free(ctx);
 
     return 0;
