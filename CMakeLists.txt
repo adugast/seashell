@@ -13,6 +13,7 @@ set(CMAKE_C_FLAGS "-W -Wall -Werror -pedantic -std=c99 -std=gnu99 -g")
 add_executable(
     seashell
     src/main.c
+    src/get_opt.c
     src/string_fct.c
 )
 
