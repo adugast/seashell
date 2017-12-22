@@ -117,6 +117,11 @@ static int init_terminal()
  * effect: Set insert mode to ON
  *
  *
+ * UNDECIM - Unset Insert Mode (default off)
+ * keycode: ESC [ 4 l
+ * effect: Set insert mode to OFF
+ *
+ *
  * SCP - Save Cursor Position
  * keycode: ESC [ s
  * effect: Saves the cursor position.
@@ -125,6 +130,8 @@ static int init_terminal()
  * RCP - Restaure Cursor Position
  * keycode: ESC [ u
  * effect: Restaures the cursor position.
+ *
+ * http://ascii-table.com/ansi-escape-sequences.php
  *
  *///////////////////////////////////////////////////////////////////
 
@@ -171,6 +178,13 @@ static ssize_t clear_screen()
 static ssize_t set_insert_mode()
 {
     return write(1, DECIM, 4);
+}
+
+/* escape sequence to unset the terminal insert mode */
+#define UNDECIM "\x1B[4l"
+static ssize_t unset_insert_mode()
+{
+    return write(1, UNDECIM, 4);
 }
 
 /* escape sequence to save cursor position */
@@ -630,6 +644,8 @@ static int interpret(struct shell *ctx)
 static int terminate(struct shell *ctx)
 {
     int ret = -1;
+
+    unset_insert_mode();
 
     ret = set_terminal(&(ctx->saved_cfg));
     if (ret == -1) {
