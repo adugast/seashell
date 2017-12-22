@@ -26,6 +26,9 @@
 #define CHAR_C      0x43 // [ C ETX
 #define CHAR_D      0x44 // [ D ETX
 
+#define CHAR_SOH    0x01 // start of heading - ctrl-a
+#define CHAR_ENQ    0x05 // enquiery - ctrl-e
+#define CHAR_ETB    0x17 // end of trans. blk - ctrl-w
 
 /////////////////////////////////////////////////////////////////////
 
@@ -116,8 +119,7 @@ static int init_terminal()
  * keycode: ESC [ 4 h
  * effect: Set insert mode to ON
  *
- *
- * UNDECIM - Unset Insert Mode (default off)
+ * UNDECIM - Unset Insert Mode (default on)
  * keycode: ESC [ 4 l
  * effect: Set insert mode to OFF
  *
@@ -126,14 +128,16 @@ static int init_terminal()
  * keycode: ESC [ s
  * effect: Saves the cursor position.
  *
- *
  * RCP - Restaure Cursor Position
  * keycode: ESC [ u
  * effect: Restaures the cursor position.
  *
+ *
  * http://ascii-table.com/ansi-escape-sequences.php
  *
+ *
  *///////////////////////////////////////////////////////////////////
+
 
 /* escape sequence for cursor left */
 #define CUB "\x1B[1D"
@@ -145,6 +149,22 @@ static ssize_t cursor_left(struct shell *ctx)
     }
 
     return -1;
+}
+
+static int cursor_n_left(struct shell *ctx, unsigned int n)
+{
+    int nb = -1;
+    int size = ctx->pos_x - n;
+
+    if (size < 0)
+        size = 0;
+
+    if (size >= 0 && n > 0) {
+        nb = fprintf(stdout, "\x1B[%dD", n);
+        fflush(stdout);
+    }
+
+    return nb;
 }
 
 /* escape sequence for cursor right */
@@ -201,6 +221,23 @@ static ssize_t restore_cursor_pos()
     return write(1, RCP, 3);
 }
 
+/*
+static int get_cursor_position()
+{
+    char buf[32] = {0};
+    int x = -1;
+    int y = -1;
+
+    if (write(STDOUT_FILENO, "\x1B[6n", 4) == -1) return -1;
+    if (read(STDIN_FILENO, buf, 32) == -1) return -1;
+
+    if (buf[0] == CHAR_ESC && buf[1] == CHAR_SB)
+        if (sscanf(buf+2, "%d;%d", &y, &x) != 2)
+            return -1;
+
+    return x;
+}
+*/
 /////////////////////////////////////////////////////////////////////
 
 static int print_fct(const char *fmt, ...)
@@ -429,6 +466,29 @@ static void set_cursor_pos(struct shell *ctx, unsigned int nb)
     ctx->line_size = nb;
 }
 
+static void backspace_key(struct shell *ctx, char *buffer)
+{
+    if (ctx->pos_x > 0) {
+        cursor_left(ctx);
+        remove_char(buffer, ctx->pos_x);
+        save_cursor_pos();
+        print_line(ctx, buffer);
+        restore_cursor_pos();
+        ctx->line_size -= 1;
+    }
+}
+
+static void delete_key(struct shell *ctx, char *buffer)
+{
+    if (ctx->pos_x < ctx->line_size) {
+        remove_char(buffer, ctx->pos_x);
+        ctx->line_size -= 1;
+        save_cursor_pos();
+        print_line(ctx, buffer);
+        restore_cursor_pos();
+    }
+}
+
 static int read_arrow_key(struct shell *ctx, const char c)
 {
     switch (c) {
@@ -479,29 +539,13 @@ static int read_keyboard(struct shell *ctx, const char keycode[3])
             case CHAR_BS:
                 printf("BS\n");
                 break;
-            case CHAR_DEL: /* backspace button */
-                if (ctx->pos_x > 0) {
-                    save_cursor_pos();
-                    ctx->pos_x -= 1;
-                    remove_char(buffer, ctx->pos_x);
-                    ctx->pos_x += 1;
-                    print_line(ctx, buffer);
-                    restore_cursor_pos();
-                    cursor_left(ctx);
-                    ctx->line_size -= 1;
-                }
+            case CHAR_DEL: /* backspace keycode */
+                backspace_key(ctx, buffer);
                 break;
-            case CHAR_DELETE: /* delete button */
-                if (ctx->pos_x < ctx->line_size) {
-                    save_cursor_pos();
-                    remove_char(buffer, ctx->pos_x);
-                    ctx->line_size -= 1;
-                    print_line(ctx, buffer);
-                    restore_cursor_pos();
-                }
+            case CHAR_DELETE: /* delete keycode */
+                delete_key(ctx, buffer);
                 break;
-            case CHAR_CR:
-                /* enter keycode */
+            case CHAR_CR: /* enter keycode */
                 if (strcmp("exit", buffer) == 0) {
                     ctx->exit = 1;
                     write(1, "\r\n", 2);
@@ -534,7 +578,22 @@ static int read_keyboard(struct shell *ctx, const char keycode[3])
                     print_line(ctx, buffer);
                 }
                 break;
-            case CHAR_TAB:
+            case CHAR_TAB: /* tab keycode */
+                break;
+            case CHAR_SOH: /* ctrl-a */
+                cursor_n_left(ctx, ctx->pos_x);
+                ctx->pos_x = 0;
+                break;
+            case CHAR_ENQ: /* ctrl-e */
+                print_line(ctx, buffer);
+                set_cursor_pos(ctx, strlen(buffer));
+                break;
+            case CHAR_ETB: /* ctrl-w */
+                memmove(&buffer[0], &buffer[ctx->pos_x], ctx->line_size);
+                print_line(ctx, buffer);
+                ctx->pos_x = 0;
+                ctx->line_size = strlen(buffer);
+                cursor_n_left(ctx, ctx->line_size);
                 break;
             default:
                 break;
