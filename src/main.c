@@ -7,6 +7,7 @@
 #include <stdarg.h>
 #include <signal.h>
 #include <ctype.h>
+#include <sys/wait.h>
 
 #include "seashell.h"
 #include "string_fct.h"
@@ -71,7 +72,7 @@ static int init_terminal()
     return set_terminal(&term);
 }
 
-/////////////////////////////////////////////////////////////////////
+
 /*!
  *      === A I N S I - E S C A P E   S E Q U E N C E S ===
  *
@@ -135,8 +136,7 @@ static int init_terminal()
  *
  * http://ascii-table.com/ansi-escape-sequences.php
  *
- *
- *///////////////////////////////////////////////////////////////////
+ */
 
 
 /* escape sequence for cursor left */
@@ -238,6 +238,7 @@ static int get_cursor_position()
     return x;
 }
 */
+
 /////////////////////////////////////////////////////////////////////
 
 static int print_fct(const char *fmt, ...)
@@ -269,9 +270,74 @@ static void print_line(const struct shell *ctx, const char *line)
 }
 
 /////////////////////////////////////////////////////////////////////
-/*
-#include <sys/types.h>
-#include <sys/wait.h>
+
+/* TODO: Find a way to combine functions "first" and "second" */
+static char **second(char *buf)
+{
+    char **res = NULL;
+    char *token = NULL;
+    char *saveptr = NULL;
+    int size = 2;
+    int i = 0;
+
+    token = strtok_r(buf, " ", &saveptr);
+    while (token != NULL) {
+
+        res = realloc(res, size * sizeof(char *));
+        res[i] = strdup(token);
+
+        i += 1;
+        size += 1;
+
+        token = strtok_r(NULL, " ", &saveptr);
+    }
+    res[i] = NULL;
+
+    return res;
+}
+
+static char ***first(char *buf)
+{
+    char ***res = NULL;
+    char *token = NULL;
+    char *saveptr = NULL;
+    int size = 2;
+    int i = 0;
+
+    token = strtok_r(buf, "|", &saveptr);
+    while (token != NULL) {
+
+        res = realloc(res, size * sizeof(char **));
+        res[i] = second(token);
+
+        i += 1;
+        size += 1;
+
+        token = strtok_r(NULL, "|", &saveptr);
+    }
+    res[i] = NULL;
+
+    return res;
+}
+
+static void free_cmds(char ***cmds)
+{
+    int i = 0;
+    int j = 0;
+
+    while (cmds[j] != NULL) {
+        while (cmds[j][i] != NULL) {
+            free(cmds[j][i]);
+            i++;
+        }
+        free(cmds[j]);
+        i = 0;
+        j++;
+    }
+    free(cmds);
+
+    return;
+}
 
 static void redirect(int oldfd, int newfd)
 {
@@ -316,58 +382,19 @@ static void pipeline(char **cmds[], size_t pos, int in_fd)
     }
 }
 
-static char **parse_buffer(char *buffer, const char *delim)
-{
-    char **command = NULL;
-    char *token = NULL;
-    char *save_ptr = NULL;
-    int index = 0;
-    size_t nb_token = -1;
-
-    nb_token = count_word(buffer, delim);
-    command = calloc(nb_token + 1, sizeof(char *));
-
-    token = strtok_r(buffer, delim, &save_ptr);
-    while (token != NULL) {
-        command[index] = token;
-        index++;
-        token = strtok_r(NULL, delim, &save_ptr);
-    }
-
-    command[index] = NULL;
-
-    return command;
-}
-
 static int execution(char *buffer)
 {
     int ret = -1;
     pid_t pid = -1;
-    char **cmds[10] = {0}; // TODO: count nbr of piped command to allocate correct size
-    unsigned int i = 0;
-    char *token = NULL;
-    char *save_ptr = NULL;
+    char ***cmds = NULL;
 
-    //char **cmd_line = parse_buffer(buffer, "|");
-    //while (cmd_line[i] != NULL) {
-    //    cmds[i] = parse_buffer(cmd_line[i], " ");
-    //    free(cmd_line[i]);
-    //    i++;
-    //}
+    if (strcmp(buffer, "\0") == 0)
+        return 0;
 
-
-    // creates cmds array to be executed
-    token = strtok_r(buffer, "|", &save_ptr);
-    while (token != NULL) {
-        cmds[i] = parse_buffer(token, " ");
-        i++;
-        token = strtok_r(NULL, "|", &save_ptr);
-    }
-    cmds[i] = NULL;
+    cmds = first(buffer);
 
     pid = fork();
     if (pid == 0) { // child
-        write(1, "\r\n", 2);
         pipeline(cmds, 0, STDIN_FILENO);
     } else { // parent
         ret = waitpid(pid, NULL, 0);
@@ -377,15 +404,11 @@ static int execution(char *buffer)
         }
     }
 
-    i = 0;
-    while (cmds[i] != NULL) {
-        free(cmds[i]);
-        i++;
-    }
+    free_cmds(cmds);
 
     return 0;
 }
-*/
+
 /////////////////////////////////////////////////////////////////////
 
 static void get_history_entry(struct shell *ctx, char *buffer)
@@ -557,7 +580,7 @@ static int read_keyboard(struct shell *ctx, const char keycode[3])
 
                 /* execute the command */
                 write(1, "\r\n", 2);
-                //execution(buffer);
+                execution(buffer);
 
                 print_prompt(ctx->prompt);
 
@@ -756,5 +779,6 @@ int main(int argc, char *argv[])
 {
     get_arguments(argc, argv);
     entry(argc, argv);
+
     return 0;
 }
