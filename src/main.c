@@ -388,9 +388,6 @@ static int execution(char *buffer)
     pid_t pid = -1;
     char ***cmds = NULL;
 
-    if (strcmp(buffer, "\0") == 0)
-        return 0;
-
     cmds = first(buffer);
 
     pid = fork();
@@ -575,12 +572,13 @@ static int read_keyboard(struct shell *ctx, const char keycode[3])
                     return EXIT_SUCCESS;
                 }
 
-                if (strcmp(buffer, "\0") != 0)
-                    add_history_entry(&(ctx->history_head), buffer);
-
-                /* execute the command */
                 write(1, "\r\n", 2);
-                execution(buffer);
+
+                if (strcmp(buffer, "\0") != 0) {
+                    add_history_entry(&(ctx->history_head), buffer);
+                    /* execute the command */
+                    execution(buffer);
+                }
 
                 print_prompt(ctx->prompt);
 
