@@ -262,10 +262,7 @@ static void print_prompt(const char *prompt)
 #define CLEARLCR "\x1B[0K"
 static void print_line(const struct shell *ctx, const char *line)
 {
-    char out[256] = "\x1B[0K";
-
-    //write(1, CLEARLCR, 4);
-    print_fct("\r%s\r", out);
+    print_fct("\r%s\r", CLEARLCR);
     print_fct("%s%s", ctx->prompt, line);
 }
 
