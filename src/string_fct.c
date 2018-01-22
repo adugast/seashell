@@ -1,6 +1,84 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <stdio.h>
+
+
+/* concat strings with count args trick
+ * -> meaning: limited by the count arg macro
+ */
+/*
+#define _COUNT_ARGS(_9,_8,_7,_6,_5,_4,_3,_2,_1,_0, nbr,...) nbr
+#define COUNT_ARGS(...) \
+    _COUNT_ARGS(,##__VA_ARGS__,9,8,7,6,5,4,3,2,1,0)
+
+#define concats(...) \
+    _concats(COUNT_ARGS(__VA_ARGS__), __VA_ARGS__)
+
+
+char *_concats(int count, ...)
+{
+    va_list ap;
+    char *res = NULL;
+    int size = 0;
+    int i = 0;
+
+    char *test[count];
+
+    va_start(ap, count);
+    for (i = 0; i < count; i++) {
+        test[i] = va_arg(ap, char *);
+        size += strlen(test[i]);
+    }
+    va_end(ap);
+
+    res = calloc(size + 1, sizeof(char));
+    for (i = 0; i < count; i++)
+        strcat(res, test[i]);
+
+    return res;
+}
+*/
+
+/* concat strings by adding "\0" as the last arguments
+ * -> meaning:  const: loop over varargs 2 times (count buffer and concat)
+ */
+#define TAG_END "\0"
+#define concats2(...) \
+    _concats2(-1, ##__VA_ARGS__, TAG_END)
+
+
+char *_concats2(int last, ...)
+{
+    char *token = NULL;
+    va_list ap;
+    size_t size = 0;
+
+    /* first loop count the size of the buffer */
+    va_start(ap, last);
+    token = va_arg(ap, char *);
+    while (strcmp(token, TAG_END) != 0) {
+        size += strlen(token);
+        token = va_arg(ap, char *);
+    }
+    va_end(ap);
+
+    char *res = NULL;
+    res = calloc(size + 1, sizeof(char));
+    if (res == NULL)
+        return NULL;
+
+    /* second loop concat the strings */
+    va_start(ap, last);
+    token = va_arg(ap, char *);
+    while (strcmp(token, TAG_END) != 0) {
+        strcat(res, token);
+        token = va_arg(ap, char *);
+    }
+    va_end(ap);
+
+    return res;
+}
 
 
 char *mystrdup(const char *s)
