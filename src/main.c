@@ -31,6 +31,7 @@
 #define CHAR_SOH    0x01 // start of heading - ctrl-a
 #define CHAR_ENQ    0x05 // enquiery - ctrl-e
 #define CHAR_ETB    0x17 // end of trans. blk - ctrl-w
+#define CHAR_FF     0x0C // form feed - ctrl-l
 
 /////////////////////////////////////////////////////////////////////
 
@@ -476,6 +477,11 @@ static int read_keyboard(struct shell *ctx, const char keycode[3])
                 ctx->pos_x = 0;
                 ctx->line_size = strlen(buffer);
                 cursor_n_left(ctx, ctx->line_size);
+                break;
+            case CHAR_FF: /* ctrl-l */
+                clear_screen();
+                set_cursor_home();
+                print_prompt(ctx->prompt);
                 break;
             default:
                 break;
