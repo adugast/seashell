@@ -482,6 +482,7 @@ static int read_keyboard(struct shell *ctx, const char keycode[3])
                 clear_screen();
                 set_cursor_home();
                 print_prompt(ctx->prompt);
+                memset(buffer, 0, BUFFER_LEN);
                 break;
             default:
                 break;
