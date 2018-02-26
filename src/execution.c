@@ -77,68 +77,60 @@ static void free_cmds(char ***cmds)
 }
 
 
-static void redirect(int oldfd, int newfd)
+static int pipeline(char **cmds[])
 {
-    if (oldfd != newfd) {
-        if (dup2(oldfd, newfd) == -1) {
-            perror("dup2()");
-            exit(0);
-        }
-        close(oldfd);
-    }
-}
-
-
-static void pipeline(char **cmds[], size_t pos, int in_fd)
-{
-    if (cmds[pos + 1] == NULL) {
-        redirect(in_fd, STDIN_FILENO);
-        execvp(cmds[pos][0], cmds[pos]);
-        fprintf(stderr, "seashell: %s: command not found\n", cmds[pos][0]);
-        exit(0);
-    } else {
-        int pipefd[2] = {0};
+    int pos;
+    for (pos = 0; cmds[pos + 1] != NULL; pos++) {
+        int pipefd[2];
         if (pipe(pipefd) == -1) {
-            perror("pipe()");
-            exit(0);
+            perror("pipe");
+            return -1;
         }
-        switch(fork()) {
+
+        switch (fork()) {
             case -1:
-                perror("fork()");
-                exit(0);
+                perror("fork");
+                return -1;
             case 0:
                 close(pipefd[0]);
-                redirect(in_fd, STDIN_FILENO);
-                redirect(pipefd[1], STDOUT_FILENO);
+                dup2(pipefd[1], STDOUT_FILENO);
                 execvp(cmds[pos][0], cmds[pos]);
                 fprintf(stderr, "seashell: %s: command not found\n", cmds[pos][0]);
-                exit(0);
+                abort();
+                break;
             default:
                 close(pipefd[1]);
-                close(in_fd);
-                pipeline(cmds, pos + 1, pipefd[0]);
+                dup2(pipefd[0], STDIN_FILENO);
+                break;
         }
     }
+
+    execvp(cmds[pos][0], cmds[pos]);
+    fprintf(stderr, "seashell: %s: command not found\n", cmds[pos][0]);
+    abort();
+
+    return 0;
 }
 
 
 int execution(char *buffer)
 {
-    int ret = -1;
-    pid_t pid = -1;
-    char ***cmds = NULL;
+    char ***cmds = first(buffer);
 
-    cmds = first(buffer);
-
-    pid = fork();
-    if (pid == 0) { // child
-        pipeline(cmds, 0, STDIN_FILENO);
-    } else { // parent
-        ret = waitpid(pid, NULL, 0);
-        if (ret == -1) {
-            perror("waitpid");
-            exit(EXIT_SUCCESS);
-        }
+    pid_t pid;
+    switch ((pid = fork())) {
+        case -1:
+            perror("fork");
+            return -1;
+        case 0: // child
+            pipeline(cmds);
+            break;
+        default: // parent
+            if (waitpid(pid, NULL, 0) == -1) {
+                perror("waitpid");
+                return -1;
+            }
+            break;
     }
 
     free_cmds(cmds);
