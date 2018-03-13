@@ -113,9 +113,10 @@ static int pipeline(char **cmds[])
 }
 
 
-int execution(char *buffer)
+/* execute the cmdline, it can be a simple command or a pipeline */
+int execute_cmdline(char *cmdline)
 {
-    char ***cmds = first(buffer);
+    char ***cmds = first(cmdline);
 
     pid_t pid;
     switch ((pid = fork())) {
@@ -132,8 +133,27 @@ int execution(char *buffer)
             }
             break;
     }
-
     free_cmds(cmds);
+    return 0;
+}
 
+
+/* split the buffer into cmdline (delimited by semi-colon) */
+int split_cmdline(char *buffer)
+{
+    char *cmdline = NULL;
+    for (cmdline = strtok(buffer, ";"); cmdline != NULL; cmdline = strtok(NULL, ";"))
+        execute_cmdline(cmdline);
+    return 0;
+}
+
+
+/* receive the whole command buffer */
+/* i.e "ls -l -a | grep a | wc -l ; echo 1 ; ls" */
+int execution(const char *buffer)
+{
+    char *buffer_save = strdup(buffer);
+    split_cmdline(buffer_save);
+    free(buffer_save);
     return 0;
 }
