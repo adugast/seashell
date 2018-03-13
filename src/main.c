@@ -513,9 +513,7 @@ static int initialize(struct shell **ctx)
     int ret = -1;
 
     // 1) create a new user shell context
-    struct shell *new = NULL;
-
-    new = calloc(1, sizeof(struct shell));
+    struct shell *new = calloc(1, sizeof(struct shell));
     if (new == NULL) {
         return -1;
     }
@@ -591,14 +589,10 @@ static int interpret(struct shell *ctx)
 
 static int terminate(struct shell *ctx)
 {
-    int ret = -1;
-
     unset_insert_mode();
 
-    ret = set_terminal(&(ctx->saved_cfg));
-    if (ret == -1) {
+    if (set_terminal(&(ctx->saved_cfg)) == -1)
         return -1;
-    }
 
     struct history *tmp = NULL;
     struct list *nodep = NULL;
@@ -638,7 +632,7 @@ int entry()
         return -1;
     }
 
-    return -1;
+    return 0;
 }
 
 int main(int argc, char *argv[])
