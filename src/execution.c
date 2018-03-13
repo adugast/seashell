@@ -77,6 +77,34 @@ static void free_cmds(char ***cmds)
 }
 
 
+#include <glob.h>
+static int globbing(char *cmd[])
+{
+    execvp(cmd[0], cmd);
+/*
+   glob_t globbuf = {0};
+   globbuf.gl_offs = 2;
+
+   int i = 0;
+   int flag = 0;
+   while (cmd[i] != NULL) {
+   printf("cmd[%s]\n", cmd[i]);
+   flag = (i > 0) ? GLOB_APPEND : 0;
+   glob(cmd[i], flag | GLOB_NOSORT | GLOB_MARK, NULL, &globbuf);
+   i++;
+   }
+
+   for (i = 0; i < globbuf.gl_pathc; i++)
+   printf("%s\n", globbuf.gl_pathv[i]);
+
+   execvp(cmd[0], cmd);
+
+   globfree(&globbuf);
+*/
+    return 0;
+}
+
+
 static int pipeline(char **cmds[])
 {
     int pos;
@@ -94,7 +122,7 @@ static int pipeline(char **cmds[])
             case 0:
                 close(pipefd[0]);
                 dup2(pipefd[1], STDOUT_FILENO);
-                execvp(cmds[pos][0], cmds[pos]);
+                globbing(cmds[pos]);
                 fprintf(stderr, "seashell: %s: command not found\n", cmds[pos][0]);
                 abort();
                 break;
@@ -105,7 +133,7 @@ static int pipeline(char **cmds[])
         }
     }
 
-    execvp(cmds[pos][0], cmds[pos]);
+    globbing(cmds[pos]);
     fprintf(stderr, "seashell: %s: command not found\n", cmds[pos][0]);
     abort();
 
@@ -114,7 +142,7 @@ static int pipeline(char **cmds[])
 
 
 /* execute the cmdline, it can be a simple command or a pipeline */
-int execute_cmdline(char *cmdline)
+static int execute_cmdline(char *cmdline)
 {
     char ***cmds = first(cmdline);
 
@@ -134,12 +162,13 @@ int execute_cmdline(char *cmdline)
             break;
     }
     free_cmds(cmds);
+
     return 0;
 }
 
 
 /* split the buffer into cmdline (delimited by semi-colon) */
-int split_cmdline(char *buffer)
+static int split_cmdline(char *buffer)
 {
     char *cmdline = NULL;
     for (cmdline = strtok(buffer, ";"); cmdline != NULL; cmdline = strtok(NULL, ";"))
@@ -149,7 +178,7 @@ int split_cmdline(char *buffer)
 
 
 /* receive the whole command buffer */
-/* i.e "ls -l -a | grep a | wc -l ; echo 1 ; ls" */
+/* i.e "ls -l -a | grep a | wc -l ; ls *; echo 1" */
 int execution(const char *buffer)
 {
     char *buffer_save = strdup(buffer);
