@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <wordexp.h>
 
 
 /* TODO: Find a way to combine functions "first" and "second" */
@@ -77,31 +78,26 @@ static void free_cmds(char ***cmds)
 }
 
 
-#include <glob.h>
-static int globbing(char *cmd[])
+static void execute_expanded_cmd(char *cmd[])
 {
-    execvp(cmd[0], cmd);
-/*
-   glob_t globbuf = {0};
-   globbuf.gl_offs = 2;
+    wordexp_t p;
 
-   int i = 0;
-   int flag = 0;
-   while (cmd[i] != NULL) {
-   printf("cmd[%s]\n", cmd[i]);
-   flag = (i > 0) ? GLOB_APPEND : 0;
-   glob(cmd[i], flag | GLOB_NOSORT | GLOB_MARK, NULL, &globbuf);
-   i++;
-   }
+    unsigned int i;
+    for (i = 0; cmd[i] != NULL; i++)
+        wordexp(cmd[i], &p, (i == 0) ? 0 : WRDE_APPEND |  WRDE_NOCMD);
+     /*
+     * Ternary operator used to add the flag WRDE_APPEND only at
+     * second and later calls to wordexp function.
+     *
+     * WRDE_NOCMD: Prevent command substitution -> Security to avoid
+     * commands like ~/$(rm -rf ~/)
+     */
 
-   for (i = 0; i < globbuf.gl_pathc; i++)
-   printf("%s\n", globbuf.gl_pathv[i]);
+    execvp(cmd[0], &p.we_wordv[0]);
 
-   execvp(cmd[0], cmd);
+    wordfree(&p);
 
-   globfree(&globbuf);
-*/
-    return 0;
+    return;
 }
 
 
@@ -122,7 +118,7 @@ static int pipeline(char **cmds[])
             case 0:
                 close(pipefd[0]);
                 dup2(pipefd[1], STDOUT_FILENO);
-                globbing(cmds[pos]);
+                execute_expanded_cmd(cmds[pos]);
                 fprintf(stderr, "seashell: %s: command not found\n", cmds[pos][0]);
                 abort();
                 break;
@@ -133,7 +129,7 @@ static int pipeline(char **cmds[])
         }
     }
 
-    globbing(cmds[pos]);
+    execute_expanded_cmd(cmds[pos]);
     fprintf(stderr, "seashell: %s: command not found\n", cmds[pos][0]);
     abort();
 
