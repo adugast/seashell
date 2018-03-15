@@ -398,13 +398,13 @@ static int read_arrow_key(struct shell *ctx, const char c)
 }
 
 /* M A I N   L O O P */
-static int read_keyboard(struct shell *ctx, const char keycode[3])
+static int read_keyboard(struct shell *ctx, const char keycode[4])
 {
     // DEBUG
-    // printf("[%d][%d][%d]\n", keycode[0], keycode[1], keycode[2]);
+    // printf("[%d][%d][%d][%d]\n", keycode[0], keycode[1], keycode[2], keycode[3]);
     static char buffer[BUFFER_LEN] = {0};
 
-    if (isprint(keycode[0]) != 0 && keycode[0] != CHAR_DELETE) {
+    if (isprint(keycode[0]) != 0) {
 
         /* insert char in buffer */
         insert_char(buffer, keycode[0], ctx->pos_x);
@@ -423,9 +423,6 @@ static int read_keyboard(struct shell *ctx, const char keycode[3])
                 break;
             case CHAR_DEL: /* backspace keycode */
                 backspace_key(ctx, buffer);
-                break;
-            case CHAR_DELETE: /* delete keycode */
-                delete_key(ctx, buffer);
                 break;
             case CHAR_CR: /* enter keycode */
                 if (strcmp("exit", buffer) == 0) {
@@ -450,6 +447,8 @@ static int read_keyboard(struct shell *ctx, const char keycode[3])
                 ctx->history_index = -1;
                 break;
             case CHAR_ESC:
+                if (keycode[3] == CHAR_DELETE) /* delete keycode */
+                    delete_key(ctx, buffer);
                 if (read_arrow_key(ctx, keycode[2]) != 0) {
                     if (ctx->history_index == -1) {
                         memset(buffer, 0, BUFFER_LEN);
@@ -566,17 +565,18 @@ static int initialize(struct shell **ctx)
     return 0;
 }
 
+
 static int interpret(struct shell *ctx)
 {
-    char keycode[3] = {0};
+    char keycode[4] = {0};
     ssize_t read_size = 0;
 
     print_prompt(ctx->prompt);
     while (ctx->exit != 1) {
 
-        memset(keycode, '\0', 3);
+        memset(keycode, '\0', 4);
 
-        read_size = read(STDIN_FILENO, keycode, 3);
+        read_size = read(STDIN_FILENO, keycode, 4);
         if (read_size == -1) {
             return -1;
         }
