@@ -2,6 +2,27 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <ctype.h>
+
+
+/* Function to clean the string given as parameter
+ * It removes begining, trailing and inter-words white-
+ * space characters replacing it by only one space ' '.
+ * white-space characters cleaned: \f, \n, \r, \t, \v
+ */
+void epur_str(char *str)
+{
+    int flag = 1;
+    char *r_ptr, *w_ptr;
+
+    for (r_ptr = w_ptr = str; *r_ptr != '\0'; r_ptr++) {
+        if (isspace(*r_ptr) == 0 || flag == 0)
+            isspace(*r_ptr) != 0 ? (*w_ptr++ = ' ') : (*w_ptr++ = *r_ptr);
+        flag = isspace(*r_ptr) ? 1 : 0;
+    }
+
+    flag ? (*--w_ptr = '\0') : (*r_ptr = '\0');
+}
 
 
 /* concat strings with count args trick
