@@ -509,56 +509,49 @@ static void signal_handler(__attribute__((unused)) int signum)
 
 static int initialize(struct shell **ctx)
 {
-    int ret = -1;
-
-    // 1) create a new user shell context
-    struct shell *new = calloc(1, sizeof(struct shell));
-    if (new == NULL) {
-        return -1;
-    }
-
-    // 2) set the user prompt
-    memcpy(new->prompt, "Cli>", PROMPT_LEN);
-
-    // 3) set signal handler for SIGINT
+    // 1) set signal handler: only for SIGINT atm, see later to extend it
     struct sigaction action;
 
     action.sa_handler = signal_handler;
     sigemptyset(&action.sa_mask);
     action.sa_flags = 0;
 
-    ret = sigaction(SIGINT, &action, NULL);
-    if (ret == -1) {
-        perror("sigaction()");
+    if (sigaction(SIGINT, &action, NULL) == -1) {
+        perror("sigaction");
         return -1;
     }
 
-    // 4) save the old terminal configuration to be able to reuse it
+    // 2) create a new user shell context
+    struct shell *new = calloc(1, sizeof(struct shell));
+    if (new == NULL) {
+        perror("calloc");
+        return -1;
+    }
+
+    // 3) set the user prompt
+    memcpy(new->prompt, "Cli>", PROMPT_LEN);
+
+    // 4) initialize history
+    init_list(&(new->history_head));
+    new->history_index = -1;
+
+    // 5) save the old terminal configuration to be able to reuse it
     // when leaving the seashell
-    ret = get_terminal(&(new->saved_cfg));
-    if (ret == -1) {
+    if (get_terminal(&(new->saved_cfg)) == -1 )
         return -1;
-    }
 
-    // 5) initialize raw mode terminal
-    ret = init_terminal();
-    if (ret == -1) {
+    // 6) initialize current terminal session
+    if (init_terminal() == -1)
         return -1;
-    }
 
-    // 6) initialize terminal and cursor position
+    // 7) initialize screen and cursor position
     clear_screen();
     set_insert_mode();
     set_cursor_home();
     set_cursor_pos(new, 0);
 
-    /* 7) initialize history */
-    init_list(&(new->history_head));
-    new->history_index = -1;
-
-    /* 8) keep global_save to clean the context in case of SIGINT
-     * and retrieve the terminal context
-     */
+    // 8) keep global_save to clean the context in case of SIGINT
+    // and retrieve the terminal context
     global_save = new;
     *ctx = new;
 
@@ -591,9 +584,6 @@ static int terminate(struct shell *ctx)
 {
     unset_insert_mode();
 
-    if (set_terminal(&(ctx->saved_cfg)) == -1)
-        return -1;
-
     struct history *tmp = NULL;
     struct list *nodep = NULL;
     for_each(&(ctx->history_head), nodep) {
@@ -602,6 +592,10 @@ static int terminate(struct shell *ctx)
         free(tmp);
     }
 
+    // re set the terminal as it was before launching seashell
+    if (set_terminal(&(ctx->saved_cfg)) == -1)
+        return -1;
+
     free(ctx);
 
     return 0;
@@ -609,25 +603,21 @@ static int terminate(struct shell *ctx)
 
 /////////////////////////////////////////////////////////////////////
 
-int entry()
+static int entry()
 {
-    int ret = -1;
     struct shell *ctx = NULL;
 
-    ret = initialize(&ctx);
-    if (ret == -1) {
+    if (initialize(&ctx) == -1) {
         fprintf(stderr, "initialize:failed");
         return -1;
     }
 
-    ret = interpret(ctx);
-    if (ret == -1) {
+    if (interpret(ctx) == -1) {
         fprintf(stderr, "interpret:failed");
         return -1;
     }
 
-    ret = terminate(ctx);
-    if (ret == -1) {
+    if (terminate(ctx) == -1) {
         fprintf(stderr, "terminate:failed");
         return -1;
     }
