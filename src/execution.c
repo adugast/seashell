@@ -70,10 +70,11 @@ static void execute_expanded_cmd(char *cmd[])
 {
     wordexp_t p;
 
+    int flag = WRDE_NOCMD;
     unsigned int i;
     for (i = 0; cmd[i] != NULL; i++)
-        wordexp(cmd[i], &p, (i == 0) ? 0 : WRDE_APPEND |  WRDE_NOCMD);
-     /*
+        wordexp(cmd[i], &p, (i == 0) ? flag : WRDE_APPEND | flag);
+    /*
      * Ternary operator used to add the flag WRDE_APPEND only at
      * second and later calls to wordexp function.
      *
