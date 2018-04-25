@@ -65,7 +65,7 @@ static void print_version()
 }
 
 
-int get_arguments(int argc, char *argv[])
+int option_manager(int argc, char *argv[])
 {
     static struct option long_options[] = {
         {"help",        no_argument, 0, 'h'},

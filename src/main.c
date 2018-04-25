@@ -640,7 +640,7 @@ static int entry()
 
 int main(int argc, char *argv[])
 {
-    get_arguments(argc, argv);
+    option_manager(argc, argv);
     entry(argc, argv);
 
     return 0;
