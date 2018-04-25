@@ -5,7 +5,7 @@ Seashell is a UNIX shell written in C.
 
 ## Program Description:
 
-Seashell can read and execute user commands like:
+Seashell can read and execute user commands like:</br>
 "/bin/ls"</br>
 "ls"</br>
 "ls -l -a"</br>
