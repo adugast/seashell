@@ -1,11 +1,17 @@
 # Seashell (work ongoing)
 ## Introduction
 
-Seashell is a linux command interpreter - GNU bash mimic.
+Seashell is a UNIX shell written in C.
 
 ## Program Description:
 
-Take input from user and execute commands like: "ls -l -a | grep a | wc -l ; ls * ; echo 1"
+Seashell can read and execute user commands like:
+"/bin/ls"</br>
+"ls"</br>
+"ls -l -a"</br>
+"ls -l -a | grep main"</br>
+"ls -l -a | grep a | wc -l ; ls * ; echo 1"</br>
+...
 
 ## Usage:
 
@@ -38,10 +44,12 @@ Cursor motion:
 - Left, Right Arrows : Move into command line
 - Up, Down Arrows : Brows through commands history
 
+Control keys:
 - CTRL^L : Clear the screen
 - CTRL^A : Move to the start of the line
 - CTRL^E : Move to the end of the line
 
+Command parsing:
 - Separators: ;
 - Globing: * ? [] {}
 - Multipipes
