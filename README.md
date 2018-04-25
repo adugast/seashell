@@ -7,9 +7,6 @@ Seashell is a linux command interpreter - GNU bash mimic.
 
 Take input from user and execute commands like: "ls -l -a | grep a | wc -l ; ls * ; echo 1"
 
-## More Info:
-* [ANSI Escape Sequences](http://ascii-table.com/ansi-escape-sequences.php) - Keycode management
-
 ## Usage:
 
 ```
@@ -38,26 +35,29 @@ Available params:
 
 ### Done
 Cursor motion:
-Left, Right Arrows : Move into command line
-Up, Down Arrows : Brows through commands history
+- Left, Right Arrows : Move into command line
+- Up, Down Arrows : Brows through commands history
 
-CTRL^L : Clear the screen
-CTRL^A : Move to the start of the line
-CTRL^E : Move to the end of the line
+- CTRL^L : Clear the screen
+- CTRL^A : Move to the start of the line
+- CTRL^E : Move to the end of the line
 
-Separators: ;
-Globing: * ? [] {}
-Multipipes
-...
+- Separators: ;
+- Globing: * ? [] {}
+- Multipipes
+- ...
 
 ### Ongoing:
 - Alias
-- Redirections < > >>
-- Separators && ||
+- Redirections: < > >>
+- Separators: && ||
 - Autocompletion
 - History whith file
 - Builtins: cd, echo, exit, ...
 - Job control
+
+## More Info:
+* [ANSI Escape Sequences](http://ascii-table.com/ansi-escape-sequences.php) - Keycode management
 
 ## License
 
