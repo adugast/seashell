@@ -5,11 +5,14 @@ Seashell is a UNIX shell written in C.
 
 ## Program Description:
 
-Seashell can read and execute user commands like:</br>
+###Seashell can read and execute user commands:
 "/bin/ls"</br>
-"ls"</br>
-"ls -l -a"</br>
-"ls -l -a | grep main"</br>
+"ls"
+###With arguments:
+"ls -l -a"
+###With pipe line:
+"ls -l -a | grep main"
+###With pipe line, globing and separator:
 "ls -l -a | grep a | wc -l ; ls * ; echo 1"</br>
 ...
 
@@ -24,7 +27,17 @@ Seashell can read and execute user commands like:</br>
 ```
 Cli>ls -l -a | grep a | wc -l
 11
+Cli>nproc
+8
+Cli>uname -r
+3.10.0-327.10.1.el7.x86_64
+Cli>ps
+  PID TTY          TIME CMD
+ 8445 pts/56   00:00:00 bash
+11615 pts/56   00:00:00 seashell
+11616 pts/56   00:00:00 ps
 Cli>
+Cli>exit
 ```
 
 ## Help:
