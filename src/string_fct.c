@@ -10,7 +10,7 @@
  * space characters replacing it by only one space ' '.
  * white-space characters cleaned: \f, \n, \r, \t, \v
  */
-void epur_str(char *str)
+void clean_str(char *str)
 {
     int flag = 1;
     char *r_ptr, *w_ptr;
@@ -18,7 +18,7 @@ void epur_str(char *str)
     for (r_ptr = w_ptr = str; *r_ptr != '\0'; r_ptr++) {
         if (isspace(*r_ptr) == 0 || flag == 0)
             isspace(*r_ptr) != 0 ? (*w_ptr++ = ' ') : (*w_ptr++ = *r_ptr);
-        flag = isspace(*r_ptr) ? 1 : 0;
+        flag = isspace(*r_ptr);
     }
 
     flag ? (*--w_ptr = '\0') : (*r_ptr = '\0');
