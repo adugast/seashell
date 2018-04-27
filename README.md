@@ -5,14 +5,14 @@ Seashell is a UNIX shell written in C.
 
 ## Program Description:
 
-- Seashell can read and execute user commands:
+- Seashell can read and execute user commands:</br>
 "/bin/ls"</br>
 "ls"
-- With arguments:
+- With arguments:</br>
 "ls -l -a"
-- With pipe line:
+- With pipe line:</br>
 "ls -l -a | grep main"
-- With pipe line, globing and separator:
+- With pipe line, globing and separator:</br>
 "ls -l -a | grep a | wc -l ; ls * ; echo 1"</br>
 ...
 
