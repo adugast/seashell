@@ -1,18 +1,18 @@
-# Seashell (work ongoing)
+# Seashell
 ## Introduction
 
 Seashell is a UNIX shell written in C.
 
 ## Program Description:
 
-### Seashell can read and execute user commands:
+- Seashell can read and execute user commands:
 "/bin/ls"</br>
 "ls"
-### With arguments:
+- With arguments:
 "ls -l -a"
-### With pipe line:
+- With pipe line:
 "ls -l -a | grep main"
-### With pipe line, globing and separator:
+- With pipe line, globing and separator:
 "ls -l -a | grep a | wc -l ; ls * ; echo 1"</br>
 ...
 
