@@ -7,25 +7,27 @@
 #include <wordexp.h>
 
 
+#define UNIQUEPASTE(x, y)   x##y
+#define UNIQUEPASTE2(x, y)  UNIQUEPASTE(x, y)
+#define UNIQUE              UNIQUEPASTE2(_tmp_, __LINE__)
+
+#define for_each_token(str, delim, token) char *UNIQUE = str; \
+        for (token = strtok_r(str, delim, &UNIQUE); token != NULL; token = strtok_r(NULL, delim, &UNIQUE))
+
+
 /* TODO: Find a way to combine functions "first" and "second" */
 static char **second(char *buf)
 {
     char **res = NULL;
     char *token = NULL;
-    char *saveptr = NULL;
     int size = 2;
     int i = 0;
 
-    token = strtok_r(buf, " ", &saveptr);
-    while (token != NULL) {
-
+    for_each_token(buf, " ", token) {
         res = realloc(res, size * sizeof(char *));
         res[i] = strdup(token);
-
         i += 1;
         size += 1;
-
-        token = strtok_r(NULL, " ", &saveptr);
     }
     res[i] = NULL;
 
@@ -37,20 +39,14 @@ static char ***first(char *buf)
 {
     char ***res = NULL;
     char *token = NULL;
-    char *saveptr = NULL;
     int size = 2;
     int i = 0;
 
-    token = strtok_r(buf, "|", &saveptr);
-    while (token != NULL) {
-
+    for_each_token(buf, "|", token) {
         res = realloc(res, size * sizeof(char **));
         res[i] = second(token);
-
         i += 1;
         size += 1;
-
-        token = strtok_r(NULL, "|", &saveptr);
     }
     res[i] = NULL;
 
@@ -60,21 +56,13 @@ static char ***first(char *buf)
 
 static void free_cmds(char ***cmds)
 {
-    int i = 0;
-    int j = 0;
-
-    while (cmds[j] != NULL) {
-        while (cmds[j][i] != NULL) {
+    int i, j;
+    for (j = 0; cmds[j] != NULL; j++) {
+        for (i = 0; cmds[j][i] != NULL; i++)
             free(cmds[j][i]);
-            i++;
-        }
         free(cmds[j]);
-        i = 0;
-        j++;
     }
     free(cmds);
-
-    return;
 }
 
 
@@ -82,10 +70,11 @@ static void execute_expanded_cmd(char *cmd[])
 {
     wordexp_t p;
 
+    int flag = WRDE_NOCMD;
     unsigned int i;
     for (i = 0; cmd[i] != NULL; i++)
-        wordexp(cmd[i], &p, (i == 0) ? 0 : WRDE_APPEND |  WRDE_NOCMD);
-     /*
+        wordexp(cmd[i], &p, (i == 0) ? flag : WRDE_APPEND | flag);
+    /*
      * Ternary operator used to add the flag WRDE_APPEND only at
      * second and later calls to wordexp function.
      *
@@ -166,9 +155,10 @@ static int execute_cmdline(char *cmdline)
 /* split the buffer into cmdline (delimited by semi-colon) */
 static int split_cmdline(char *buffer)
 {
-    char *cmdline = NULL;
-    for (cmdline = strtok(buffer, ";"); cmdline != NULL; cmdline = strtok(NULL, ";"))
+    char *cmdline;
+    for_each_token(buffer, ";", cmdline)
         execute_cmdline(cmdline);
+
     return 0;
 }
 
