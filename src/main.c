@@ -14,6 +14,8 @@
 #include "string_fct.h"
 
 
+#define BUFFER_LEN  256
+
 #define CHAR_BS     0x08 // back space '\b'
 #define CHAR_TAB    0x09 // horizontal tab '\t'
 #define CHAR_NL     0x0A // new line '\n'
@@ -398,95 +400,107 @@ static int read_arrow_key(struct shell *ctx, const char c)
 }
 
 /* M A I N   L O O P */
-static int read_keyboard(struct shell *ctx, const char keycode[4])
+static int read_keyboard(struct shell *ctx, const char *buffer, ssize_t bytes_read)
 {
     // DEBUG
-    // printf("[%d][%d][%d][%d]\n", keycode[0], keycode[1], keycode[2], keycode[3]);
-    static char buffer[BUFFER_LEN] = {0};
+    // printf("[%d][%d][%d][%d]\n", buffer[0], buffer[1], buffer[2], buffer[3]);
+    static char line[BUFFER_LEN] = {0};
 
-    if (isprint(keycode[0]) != 0) {
+    /* loop over every received characters (printable and special characters) */
+    int i;
+    for (i = 0; i < bytes_read; i++) {
 
-        /* insert char in buffer */
-        insert_char(buffer, keycode[0], ctx->pos_x);
-        /* write the char */
-        write(1, &keycode[0], 1);
-        /* set usefull variable */
-        ctx->pos_x += 1;
-        ctx->line_size = strlen(buffer);
+        /* split the processing between printable and special characters for one input character */
+        if (isprint(buffer[i]) != 0) {
 
-    } else {
+            /* insert char in buffer line */
+            insert_char(line, buffer[i], ctx->pos_x);
+            /* write the char on STDOUT */
+            write(1, &buffer[i], 1);
+            /* set usefull variable */
+            ctx->pos_x += 1;
+            ctx->line_size = strlen(line);
 
-        /* handle special characters */
-        switch (keycode[0]) {
-            case CHAR_BS:
-                printf("BS\n");
-                break;
-            case CHAR_DEL: /* backspace keycode */
-                backspace_key(ctx, buffer);
-                break;
-            case CHAR_CR: /* enter keycode */
-                if (strcmp("exit", buffer) == 0) {
-                    ctx->exit = 1;
-                    write(1, "\r\n", 2);
-                    return EXIT_SUCCESS;
-                }
+        } else {
 
-                write(1, "\r\n", 2);
-
-                if (strcmp(buffer, "\0") != 0) {
-                    add_history_entry(&(ctx->history_head), buffer);
-                    /* execute the command */
-                    execution(buffer);
-                }
-
-                print_prompt(ctx->prompt);
-
-                /* set usefull variable */
-                memset(buffer, 0, BUFFER_LEN);
-                set_cursor_pos(ctx, 0);
-                ctx->history_index = -1;
-                break;
-            case CHAR_ESC:
-                if (keycode[3] == CHAR_DELETE) /* delete keycode */
-                    delete_key(ctx, buffer);
-                if (read_arrow_key(ctx, keycode[2]) != 0) {
-                    if (ctx->history_index == -1) {
-                        memset(buffer, 0, BUFFER_LEN);
-                        set_cursor_pos(ctx, 0);
-                    } else {
-                        get_history_entry(ctx, buffer);
-                        set_cursor_pos(ctx, strlen(buffer));
+            /* handle special characters */
+            switch (buffer[i]) {
+                case CHAR_BS:
+                    printf("BS\n");
+                    break;
+                case CHAR_DEL: /* backspace keycode */
+                    backspace_key(ctx, line);
+                    break;
+                case CHAR_CR: /* enter keycode */
+                    if (strcmp("exit", line) == 0) {
+                        ctx->exit = 1;
+                        write(1, "\r\n", 2);
+                        return EXIT_SUCCESS;
                     }
-                    print_line(ctx, buffer);
-                }
-                break;
-            case CHAR_TAB: /* tab keycode */
-                break;
-            case CHAR_SOH: /* ctrl-a */
-                cursor_n_left(ctx, ctx->pos_x);
-                ctx->pos_x = 0;
-                break;
-            case CHAR_ENQ: /* ctrl-e */
-                print_line(ctx, buffer);
-                set_cursor_pos(ctx, strlen(buffer));
-                break;
-            case CHAR_ETB: /* ctrl-w */
-                memmove(&buffer[0], &buffer[ctx->pos_x], ctx->line_size);
-                print_line(ctx, buffer);
-                ctx->pos_x = 0;
-                ctx->line_size = strlen(buffer);
-                cursor_n_left(ctx, ctx->line_size);
-                break;
-            case CHAR_FF: /* ctrl-l */
-                clear_screen();
-                set_cursor_home();
-                print_prompt(ctx->prompt);
-                memset(buffer, 0, BUFFER_LEN);
-                break;
-            default:
-                break;
-        }
-    }
+
+                    write(1, "\r\n", 2);
+
+                    if (strcmp(line, "\0") != 0) {
+                        add_history_entry(&(ctx->history_head), line);
+                        /* execute the command */
+                        execution(line);
+                    }
+
+                    print_prompt(ctx->prompt);
+
+                    /* set usefull variable */
+                    memset(line, 0, BUFFER_LEN);
+                    set_cursor_pos(ctx, 0);
+                    ctx->history_index = -1;
+                    break;
+                case CHAR_ESC:
+                    if (buffer[i + 3] == CHAR_DELETE) { /* delete keycode */
+                        delete_key(ctx, line);
+                        /* delete escape sequence is 4 characters long then add 4 to the iterator */
+                        i += 4;
+                        break;
+                    }
+                    if (read_arrow_key(ctx, buffer[i + 2]) != 0) {
+                        if (ctx->history_index == -1) {
+                            memset(line, 0, BUFFER_LEN);
+                            set_cursor_pos(ctx, 0);
+                        } else {
+                            get_history_entry(ctx, line);
+                            set_cursor_pos(ctx, strlen(line));
+                        }
+                        print_line(ctx, line);
+                    }
+                    /* arrow key escape sequence is 3 characters long then add 3 to the iterator */
+                    i += 3;
+                    break;
+                case CHAR_TAB: /* tab keycode */
+                    break;
+                case CHAR_SOH: /* ctrl-a */
+                    cursor_n_left(ctx, ctx->pos_x);
+                    ctx->pos_x = 0;
+                    break;
+                case CHAR_ENQ: /* ctrl-e */
+                    print_line(ctx, line);
+                    set_cursor_pos(ctx, strlen(line));
+                    break;
+                case CHAR_ETB: /* ctrl-w */
+                    memmove(&line[0], &line[ctx->pos_x], ctx->line_size);
+                    print_line(ctx, line);
+                    ctx->pos_x = 0;
+                    ctx->line_size = strlen(line);
+                    cursor_n_left(ctx, ctx->line_size);
+                    break;
+                case CHAR_FF: /* ctrl-l */
+                    clear_screen();
+                    set_cursor_home();
+                    print_prompt(ctx->prompt);
+                    memset(line, 0, BUFFER_LEN);
+                    break;
+                default:
+                    break;
+            } /* end switch special character processing */
+        } /* end handling for one input (printable and special character) */
+    } /* end for loop */
 
     return 0;
 }
@@ -509,56 +523,49 @@ static void signal_handler(__attribute__((unused)) int signum)
 
 static int initialize(struct shell **ctx)
 {
-    int ret = -1;
-
-    // 1) create a new user shell context
-    struct shell *new = calloc(1, sizeof(struct shell));
-    if (new == NULL) {
-        return -1;
-    }
-
-    // 2) set the user prompt
-    memcpy(new->prompt, "Cli>", PROMPT_LEN);
-
-    // 3) set signal handler for SIGINT
+    // 1) set signal handler: only for SIGINT atm, see later to extend it
     struct sigaction action;
 
     action.sa_handler = signal_handler;
     sigemptyset(&action.sa_mask);
     action.sa_flags = 0;
 
-    ret = sigaction(SIGINT, &action, NULL);
-    if (ret == -1) {
-        perror("sigaction()");
+    if (sigaction(SIGINT, &action, NULL) == -1) {
+        perror("sigaction");
         return -1;
     }
 
-    // 4) save the old terminal configuration to be able to reuse it
+    // 2) create a new user shell context
+    struct shell *new = calloc(1, sizeof(struct shell));
+    if (new == NULL) {
+        perror("calloc");
+        return -1;
+    }
+
+    // 3) set the user prompt
+    memcpy(new->prompt, "Cli>", PROMPT_LEN);
+
+    // 4) initialize history
+    init_list(&(new->history_head));
+    new->history_index = -1;
+
+    // 5) save the old terminal configuration to be able to reuse it
     // when leaving the seashell
-    ret = get_terminal(&(new->saved_cfg));
-    if (ret == -1) {
+    if (get_terminal(&(new->saved_cfg)) == -1 )
         return -1;
-    }
 
-    // 5) initialize raw mode terminal
-    ret = init_terminal();
-    if (ret == -1) {
+    // 6) initialize current terminal session
+    if (init_terminal() == -1)
         return -1;
-    }
 
-    // 6) initialize terminal and cursor position
+    // 7) initialize screen and cursor position
     clear_screen();
     set_insert_mode();
     set_cursor_home();
     set_cursor_pos(new, 0);
 
-    /* 7) initialize history */
-    init_list(&(new->history_head));
-    new->history_index = -1;
-
-    /* 8) keep global_save to clean the context in case of SIGINT
-     * and retrieve the terminal context
-     */
+    // 8) keep global_save to clean the context in case of SIGINT
+    // and retrieve the terminal context
     global_save = new;
     *ctx = new;
 
@@ -568,20 +575,19 @@ static int initialize(struct shell **ctx)
 
 static int interpret(struct shell *ctx)
 {
-    char keycode[4] = {0};
-    ssize_t read_size = 0;
+    char buffer[BUFFER_LEN] = {0};
+    ssize_t bytes_read = 0;
 
     print_prompt(ctx->prompt);
     while (ctx->exit != 1) {
 
-        memset(keycode, '\0', 4);
+        memset(buffer, '\0', BUFFER_LEN);
 
-        read_size = read(STDIN_FILENO, keycode, 4);
-        if (read_size == -1) {
+        bytes_read = read(STDIN_FILENO, buffer, BUFFER_LEN);
+        if (bytes_read == -1)
             return -1;
-        }
 
-        read_keyboard(ctx, keycode);
+        read_keyboard(ctx, buffer, bytes_read);
     }
 
     return 0;
@@ -591,9 +597,6 @@ static int terminate(struct shell *ctx)
 {
     unset_insert_mode();
 
-    if (set_terminal(&(ctx->saved_cfg)) == -1)
-        return -1;
-
     struct history *tmp = NULL;
     struct list *nodep = NULL;
     for_each(&(ctx->history_head), nodep) {
@@ -602,6 +605,10 @@ static int terminate(struct shell *ctx)
         free(tmp);
     }
 
+    // re set the terminal as it was before launching seashell
+    if (set_terminal(&(ctx->saved_cfg)) == -1)
+        return -1;
+
     free(ctx);
 
     return 0;
@@ -609,25 +616,21 @@ static int terminate(struct shell *ctx)
 
 /////////////////////////////////////////////////////////////////////
 
-int entry()
+static int entry()
 {
-    int ret = -1;
     struct shell *ctx = NULL;
 
-    ret = initialize(&ctx);
-    if (ret == -1) {
+    if (initialize(&ctx) == -1) {
         fprintf(stderr, "initialize:failed");
         return -1;
     }
 
-    ret = interpret(ctx);
-    if (ret == -1) {
+    if (interpret(ctx) == -1) {
         fprintf(stderr, "interpret:failed");
         return -1;
     }
 
-    ret = terminate(ctx);
-    if (ret == -1) {
+    if (terminate(ctx) == -1) {
         fprintf(stderr, "terminate:failed");
         return -1;
     }
@@ -637,7 +640,7 @@ int entry()
 
 int main(int argc, char *argv[])
 {
-    get_arguments(argc, argv);
+    option_manager(argc, argv);
     entry(argc, argv);
 
     return 0;

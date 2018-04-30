@@ -29,7 +29,7 @@ struct shell {
 };
 
 
-int get_arguments(int argc, char *argv[]);
+int option_manager(int argc, char *argv[]);
 
 
 #endif /* __SEASHELL_H__ */
