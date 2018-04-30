@@ -18,7 +18,7 @@ void epur_str(char *str)
     for (r_ptr = w_ptr = str; *r_ptr != '\0'; r_ptr++) {
         if (isspace(*r_ptr) == 0 || flag == 0)
             isspace(*r_ptr) != 0 ? (*w_ptr++ = ' ') : (*w_ptr++ = *r_ptr);
-        flag = isspace(*r_ptr) ? 1 : 0;
+        flag = isspace(*r_ptr);
     }
 
     flag ? (*--w_ptr = '\0') : (*r_ptr = '\0');
