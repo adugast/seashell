@@ -82,7 +82,7 @@ static void execute_expanded_cmd(char *cmd[])
      * commands like ~/$(rm -rf ~/)
      */
 
-    execvp(cmd[0], &p.we_wordv[0]);
+    execvp(p.we_wordv[0], &p.we_wordv[0]);
 
     wordfree(&p);
 
@@ -172,3 +172,4 @@ int execution(const char *buffer)
     free(buffer_save);
     return 0;
 }
+

@@ -2,8 +2,6 @@
 #include <stdlib.h>
 #include <getopt.h>
 
-#include "seashell.h"
-
 
 static void print_usage(const char *binary_name)
 {
@@ -66,7 +64,7 @@ static void print_version()
 }
 
 
-int option_manager(int argc, char *argv[])
+void option_manager(int argc, char *argv[])
 {
     static struct option long_options[] = {
         {"help",        no_argument, 0, 'h'},
@@ -85,6 +83,5 @@ int option_manager(int argc, char *argv[])
             default: print_usage(argv[0]); exit(EXIT_SUCCESS);
         }
     }
-
-    return 0;
 }
+
