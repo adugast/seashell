@@ -59,6 +59,7 @@ static void print_version()
     printf("Linux C shell - GNU bash mimic\n");
     printf("Copyright (C) 2017 pestbuns\n");
     printf("MIT License: <https://opensource.org/licenses/MIT>\n");
+    printf("Git Repository: <https://github.com/pestbuns/seashell>\n");
     printf("\n");
     printf("This is free software; you are free to change and redistribute it.\n");
     printf("There is NO WARRANTY, to the extent permitted by law.\n");
