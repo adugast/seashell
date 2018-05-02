@@ -7,7 +7,7 @@ cmake_minimum_required(VERSION 2.6.2)
 project(seashell)
 
 ## set compilation flags
-set(CMAKE_C_FLAGS "-W -Wall -Werror -pedantic -std=c99 -std=gnu99 -g")
+set(CMAKE_C_FLAGS "-W -Wall -pedantic -std=c99 -std=gnu99 -g")
 
 ## set the target name and source
 add_executable(
@@ -16,5 +16,10 @@ add_executable(
     src/option_manager.c
     src/execution.c
     src/string_fct.c
+    src/ncurses_proxy.c
 )
+
+## set the needed library
+find_package(Curses REQUIRED)
+target_link_libraries(seashell ncurses)
 
