@@ -11,7 +11,7 @@
 
 #include "seashell.h"
 #include "execution.h"
-#include "string_fct.h"
+#include "ncurses_proxy.h"
 
 
 #define BUFFER_LEN  256
@@ -76,85 +76,16 @@ static int init_terminal()
     return set_terminal(&term);
 }
 
-
-/*!
- *      === A I N S I - E S C A P E   S E Q U E N C E S ===
- *
- * man (4) console_codes
- *
- * -- CURSOR MOVEMENTS AND TERMINAL CONFIGURATION --
- *
- * CUB - CUrsor Backward
- * keycode: ESC [ n D
- *
- * CUF - CUrsor Forward
- * keycode: ESC [ n C
- *
- * effect : Moves the cursor n (default 1) cells in the given direction.
- *          If the cursor is already at the edge of the screen, this has no effect.
- *
- *
- * CUP - CUrsor Position
- * keycode: ESC [ n ; m H
- * effect : Moves the cursor to row n, column m.
- *          The values are 1-based, and default to 1 (top left corner) if omitted.
- *
- *
- * EL - Erase Line (default: from cursor to end of line))
- * keycode: ESC [ n K
- * effect: Erases part of the line.
- *         If n is zero (or missing), erase from cursor to the end of line.
- *         If n is one, erase from start of line to cursor.
- *         If n is two, rase whole line.
- *         Cursor position does not change.
- *
- *
- * ED - Erase in Display
- * keycode: ESC [ n J
- * effect: Clears part of the screen.
- *         If n is 0 (or missing), clear from cursor to end of screen.
- *         If n is 1, clear from cursor to beginning of the screen.
- *         If n is 2, clear entire screen (and moves cursor to upper left).
- *         If n is 3, clear entire screen and delete all lines saved
- *         in the scrollback buffer (this feature was added for xterm
- *         and is supported by other terminal applications).
- *
- *
- * DECIM - Set Insert Mode (default off)
- * keycode: ESC [ 4 h
- * effect: Set insert mode to ON
- *
- * UNDECIM - Unset Insert Mode (default on)
- * keycode: ESC [ 4 l
- * effect: Set insert mode to OFF
- *
- *
- * SCP - Save Cursor Position
- * keycode: ESC [ s
- * effect: Saves the cursor position.
- *
- * RCP - Restaure Cursor Position
- * keycode: ESC [ u
- * effect: Restaures the cursor position.
- *
- *
- * http://ascii-table.com/ansi-escape-sequences.php
- *
- */
-
-
-/* escape sequence for cursor left */
-#define CUB "\x1B[1D"
-static ssize_t cursor_left(struct shell *ctx)
+/* move cursor one space to the left */
+static void cursor_left(struct shell *ctx)
 {
     if (ctx->pos_x > 0) {
+        nc_cursor_left();
         ctx->pos_x -= 1;
-        return write(1, CUB, 4);
     }
-
-    return -1;
 }
 
+/* move cursor from n space to the left */
 static int cursor_n_left(struct shell *ctx, unsigned int n)
 {
     int nb = -1;
@@ -171,77 +102,14 @@ static int cursor_n_left(struct shell *ctx, unsigned int n)
     return nb;
 }
 
-/* escape sequence for cursor right */
-#define CUF "\x1B[1C"
-static ssize_t cursor_right(struct shell *ctx)
+/* move cursor from one space to the right */
+static void cursor_right(struct shell *ctx)
 {
     if (ctx->pos_x < ctx->line_size) {
+        nc_cursor_right();
         ctx->pos_x += 1;
-        return write(1, CUF, 4);
     }
-
-    return -1;
 }
-
-/* escape sequence to set the cursor position to 0, 0 */
-#define CUP "\x1B[0;0H"
-static ssize_t set_cursor_home()
-{
-    return write(1, CUP, 6);
-}
-
-/* escape sequence to clear the screen */
-#define CLEAR_SCREEN "\x1B[2J"
-static ssize_t clear_screen()
-{
-    return write(1, CLEAR_SCREEN, 4);
-}
-
-/* escape sequence to set the terminal in insert mode */
-#define DECIM "\x1B[4h"
-static ssize_t set_insert_mode()
-{
-    return write(1, DECIM, 4);
-}
-
-/* escape sequence to unset the terminal insert mode */
-#define UNDECIM "\x1B[4l"
-static ssize_t unset_insert_mode()
-{
-    return write(1, UNDECIM, 4);
-}
-
-/* escape sequence to save cursor position */
-#define SCP "\x1B[s"
-static ssize_t save_cursor_pos()
-{
-    return write(1, SCP, 3);
-}
-
-/* escape sequence to restore cursor position */
-#define RCP "\x1B[u"
-static ssize_t restore_cursor_pos()
-{
-    return write(1, RCP, 3);
-}
-
-/*
-static int get_cursor_position()
-{
-    char buf[32] = {0};
-    int x = -1;
-    int y = -1;
-
-    if (write(STDOUT_FILENO, "\x1B[6n", 4) == -1) return -1;
-    if (read(STDIN_FILENO, buf, 32) == -1) return -1;
-
-    if (buf[0] == CHAR_ESC && buf[1] == CHAR_SB)
-        if (sscanf(buf+2, "%d;%d", &y, &x) != 2)
-            return -1;
-
-    return x;
-}
-*/
 
 /////////////////////////////////////////////////////////////////////
 
@@ -263,11 +131,10 @@ static void print_prompt(const char *prompt)
     print_fct(prompt);
 }
 
-#define CLEARLCR "\x1B[0K"
 static void print_line(const struct shell *ctx, const char *line)
 {
-    print_fct("\r%s\r", CLEARLCR);
-    print_fct("%s%s", ctx->prompt, line);
+    nc_delete_line();
+    print_fct("\r%s%s", ctx->prompt, line);
 }
 
 /////////////////////////////////////////////////////////////////////
@@ -332,8 +199,6 @@ static int remove_char(char *buffer, unsigned int pos)
         return 0;
     }
 
-    buffer[pos] = '\0';
-
     while (pos < len) {
         buffer[pos] = buffer[pos + 1];
         pos++;
@@ -355,9 +220,9 @@ static void backspace_key(struct shell *ctx, char *buffer)
     if (ctx->pos_x > 0) {
         cursor_left(ctx);
         remove_char(buffer, ctx->pos_x);
-        save_cursor_pos();
+        nc_save_cursor();
         print_line(ctx, buffer);
-        restore_cursor_pos();
+        nc_restore_cursor();
         ctx->line_size -= 1;
     }
 }
@@ -365,11 +230,9 @@ static void backspace_key(struct shell *ctx, char *buffer)
 static void delete_key(struct shell *ctx, char *buffer)
 {
     if (ctx->pos_x < ctx->line_size) {
+        nc_delete_char();
         remove_char(buffer, ctx->pos_x);
         ctx->line_size -= 1;
-        save_cursor_pos();
-        print_line(ctx, buffer);
-        restore_cursor_pos();
     }
 }
 
@@ -491,8 +354,7 @@ static int read_keyboard(struct shell *ctx, const char *buffer, ssize_t bytes_re
                     cursor_n_left(ctx, ctx->line_size);
                     break;
                 case CHAR_FF: /* ctrl-l */
-                    clear_screen();
-                    set_cursor_home();
+                    nc_clear_screen();
                     print_prompt(ctx->prompt);
                     memset(line, 0, BUFFER_LEN);
                     break;
@@ -558,10 +420,16 @@ static int initialize(struct shell **ctx)
     if (init_terminal() == -1)
         return -1;
 
-    // 7) initialize screen and cursor position
-    clear_screen();
-    set_insert_mode();
-    set_cursor_home();
+    // 7) initialize terminfo database
+    if (nc_init_terminal_data() != 1) {
+        terminate(new);
+        return -1;
+    }
+
+    // TODO: do the clear_screen at the begining optional
+    // do the configuration from cfg file ?
+    //nc_clear_screen();
+    nc_enter_insert_mode();
     set_cursor_pos(new, 0);
 
     // 8) keep global_save to clean the context in case of SIGINT
@@ -571,7 +439,6 @@ static int initialize(struct shell **ctx)
 
     return 0;
 }
-
 
 static int interpret(struct shell *ctx)
 {
@@ -595,7 +462,7 @@ static int interpret(struct shell *ctx)
 
 static int terminate(struct shell *ctx)
 {
-    unset_insert_mode();
+    nc_exit_insert_mode();
 
     struct history *tmp = NULL;
     struct list *nodep = NULL;
@@ -605,7 +472,7 @@ static int terminate(struct shell *ctx)
         free(tmp);
     }
 
-    // re set the terminal as it was before launching seashell
+    // reset the terminal as it was before launching seashell
     if (set_terminal(&(ctx->saved_cfg)) == -1)
         return -1;
 
@@ -621,17 +488,17 @@ static int entry()
     struct shell *ctx = NULL;
 
     if (initialize(&ctx) == -1) {
-        fprintf(stderr, "initialize:failed");
+        fprintf(stderr, "initialize:failed\n");
         return -1;
     }
 
     if (interpret(ctx) == -1) {
-        fprintf(stderr, "interpret:failed");
+        fprintf(stderr, "interpret:failed\n");
         return -1;
     }
 
     if (terminate(ctx) == -1) {
-        fprintf(stderr, "terminate:failed");
+        fprintf(stderr, "terminate:failed\n");
         return -1;
     }
 
@@ -645,3 +512,4 @@ int main(int argc, char *argv[])
 
     return 0;
 }
+
