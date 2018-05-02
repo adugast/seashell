@@ -24,6 +24,7 @@ struct shell {
     unsigned int line_size;
     int history_index;
     struct list history_head;
+    FILE *history_stream;
     struct termios saved_cfg;
     bool exit;
 };

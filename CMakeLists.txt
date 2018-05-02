@@ -14,6 +14,7 @@ add_executable(
     seashell
     src/main.c
     src/option_manager.c
+    src/stream_manager.c
     src/execution.c
     src/string_fct.c
     src/ncurses_proxy.c

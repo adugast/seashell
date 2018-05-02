@@ -12,6 +12,7 @@
 #include "seashell.h"
 #include "execution.h"
 #include "ncurses_proxy.h"
+#include "stream_manager.h"
 
 
 #define BUFFER_LEN  256
@@ -168,6 +169,19 @@ static int add_history_entry(struct list *list, const char *buffer)
     return 0;
 }
 
+void fill_history_list(struct shell *ctx)
+{
+    char *line = NULL;
+    size_t len = 0;
+    ssize_t nread;
+    while ((nread = getline(&line, &len, ctx->history_stream)) != -1) {
+        line[nread - 1] = '\n' ? line[nread - 1] = '\0': 0;
+        add_history_entry(&(ctx->history_head), line);
+    }
+
+    free(line);
+}
+
 /////////////////////////////////////////////////////////////////////
 
 static int insert_char(char *buffer, char c, unsigned int pos)
@@ -305,6 +319,7 @@ static int read_keyboard(struct shell *ctx, const char *buffer, ssize_t bytes_re
 
                     if (strcmp(line, "\0") != 0) {
                         add_history_entry(&(ctx->history_head), line);
+                        write_stream(ctx->history_stream, line);
                         /* execute the command */
                         execution(line);
                     }
@@ -409,6 +424,8 @@ static int initialize(struct shell **ctx)
 
     // 4) initialize history
     init_list(&(new->history_head));
+    new->history_stream = open_stream(".seashell_history", "a+b");
+    fill_history_list(new);
     new->history_index = -1;
 
     // 5) save the old terminal configuration to be able to reuse it
@@ -471,6 +488,7 @@ static int terminate(struct shell *ctx)
         list_delete(nodep);
         free(tmp);
     }
+    close_stream(ctx->history_stream);
 
     // reset the terminal as it was before launching seashell
     if (set_terminal(&(ctx->saved_cfg)) == -1)
