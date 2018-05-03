@@ -170,15 +170,15 @@ int execution(const char *buffer)
 {
     char *buffer_save = strdup(buffer);
 
+    /*
     struct parser *p = calloc(1, sizeof(struct parser));
     init_list(&(p->cmd_line_list));
     init_parser(buffer_save, p);
-
     dump_parser(p);
-
     deinit_parser(p);
+    */
 
-    //split_cmdline(buffer_save);
+    split_cmdline(buffer_save);
 
     free(buffer_save);
     return 0;
