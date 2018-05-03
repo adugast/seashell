@@ -169,17 +169,10 @@ static int add_history_entry(struct list *list, const char *buffer)
     return 0;
 }
 
-void fill_history_list(struct shell *ctx)
+void fill_history_list_cb(char *line, __attribute__ ((unused)) size_t line_len, void *ctx)
 {
-    char *line = NULL;
-    size_t len = 0;
-    ssize_t nread;
-    while ((nread = getline(&line, &len, ctx->history_stream)) != -1) {
-        line[nread - 1] = '\n' ? line[nread - 1] = '\0': 0;
-        add_history_entry(&(ctx->history_head), line);
-    }
-
-    free(line);
+    struct list *history_head = (struct list *)(ctx);
+    add_history_entry(history_head, line);
 }
 
 /////////////////////////////////////////////////////////////////////
@@ -425,7 +418,7 @@ static int initialize(struct shell **ctx)
     // 4) initialize history
     init_list(&(new->history_head));
     new->history_stream = open_stream(".seashell_history", "a+b");
-    fill_history_list(new);
+    foreach_line_stream(new->history_stream, &fill_history_list_cb, &(new->history_head));
     new->history_index = -1;
 
     // 5) save the old terminal configuration to be able to reuse it
