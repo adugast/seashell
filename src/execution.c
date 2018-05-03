@@ -6,10 +6,11 @@
 #include <sys/wait.h>
 #include <wordexp.h>
 
+#include "parser.h"
 
-#define UNIQUEPASTE(x, y)   x##y
-#define UNIQUEPASTE2(x, y)  UNIQUEPASTE(x, y)
-#define UNIQUE              UNIQUEPASTE2(_tmp_, __LINE__)
+//#define UNIQUEPASTE(x, y)   x##y
+//#define UNIQUEPASTE2(x, y)  UNIQUEPASTE(x, y)
+//#define UNIQUE              UNIQUEPASTE2(_tmp_, __LINE__)
 
 #define for_each_token(str, delim, token) char *UNIQUE = str; \
         for (token = strtok_r(str, delim, &UNIQUE); token != NULL; token = strtok_r(NULL, delim, &UNIQUE))
@@ -168,7 +169,17 @@ static int split_cmdline(char *buffer)
 int execution(const char *buffer)
 {
     char *buffer_save = strdup(buffer);
-    split_cmdline(buffer_save);
+
+    struct parser *p = calloc(1, sizeof(struct parser));
+    init_list(&(p->cmd_line_list));
+    init_parser(buffer_save, p);
+
+    dump_parser(p);
+
+    deinit_parser(p);
+
+    //split_cmdline(buffer_save);
+
     free(buffer_save);
     return 0;
 }

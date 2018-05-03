@@ -18,6 +18,7 @@ add_executable(
     src/execution.c
     src/string_fct.c
     src/ncurses_proxy.c
+    src/parser.c
 )
 
 ## set the needed library
