@@ -79,7 +79,6 @@ Command parsing:
 
 ## How it works
 
-`
        +------------------------------------+
        |How sea shell proceeds user inputs ?|
        +------------------------------------+
@@ -107,7 +106,7 @@ Command parsing:
         +--------+
                         then the command line is parsed by the parser module at each
                         ";", "|" and " " characters and executed
- `  
+   
 
 ## More Info:
 * [ANSI Escape Sequences](http://ascii-table.com/ansi-escape-sequences.php) - Keycode management
