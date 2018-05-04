@@ -77,36 +77,37 @@ Command parsing:
 - Builtins: cd, echo, exit, ...
 - Job control
 
-## How it works
+## How seashell works:
 
-       +------------------------------------+
-       |How sea shell proceeds user inputs ?|
-       +------------------------------------+
+`
++------------------------------------+
+|How sea shell proceeds user inputs ?|
++------------------------------------+
 
-       +----------+
-       |user input|
-       +----+-----+
-            |           use the read function call to get input from STDIN
-            |           and generate a buffer with RAW data.
-            v           (contains printable and special characters)
-        +---+--+
-        |buffer|
-        +---+--+
-            |           reconstruct a new buffer line with only printable characters.
-            |           -> special characters are directly proceed to handle terminal
-            v           management (i.e arrow keys, ctrl keys, delete, backspace, etc ...)
-         +--+-+
-         |line|
-         +--+-+
-            |           after pressing "enter" the buffer line goes to the execution module
-            |           and becomes the command line to execute.
-            v           (i.e "ls -l -a | grep a | wc -l ; ls * ; echo 42")
-        +---+----+
-        |cmd line|
-        +--------+
-                        then the command line is parsed by the parser module at each
-                        ";", "|" and " " characters and executed
-   
++----------+
+|user input|
++----+-----+
+     |            use the read function call to get input from STDIN
+     |            and generate a buffer with RAW data.
+     v            (contains printable and special characters)
+ +---+--+
+ |buffer|
+ +---+--+
+     |            reconstruct a new buffer line with only printable characters.
+     |            -> special characters are directly proceed to handle terminal
+     v    <-^     management (i.e arrow keys, ctrl keys, delete, backspace, etc ...)
+  +--+-+  | |
+  |line|  | |     main loop - read keyboard
+  +--+-+  | |
+     |    v->     after pressing "enter" the buffer line goes to the execution module
+     |            and becomes the command line to execute.
+     v            (i.e "ls -l -a | grep a | wc -l ; ls * ; echo 42")
+ +---+----+
+ |cmd line|
+ +--------+
+                  then the command line is parsed by the parser module at each
+                  ";", "|" and " " characters and executed
+`
 
 ## More Info:
 * [ANSI Escape Sequences](http://ascii-table.com/ansi-escape-sequences.php) - Keycode management
