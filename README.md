@@ -107,6 +107,10 @@ Command parsing:
  +--------+
                     then the command line is parsed by the parser module for each
                     ";", "|" and " " characters and executed.
+                    
+";" commands separator
+"|" split the commands to be executed in a pipeline (output of the executed command is transferred as input for the following command)
+" " split the command with their own arguments
 ```
 
 ## More Info:
