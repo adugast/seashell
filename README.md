@@ -87,25 +87,26 @@ Command parsing:
 +----------+
 |user input|        -IN- user keyboard
 +----+-----+
-     |              use the read function call to get input from STDIN
-     |              and generate a buffer with RAW data.
+     |              A read function call is used to get input from STDIN
+     |              and generates a buffer with RAW data.
      v              (contains printable and special characters)
  +---+--+
  |buffer|           (main interpret function)
  +---+--+
-     |              reconstruct a new buffer line with only printable characters.
-     |              -> special characters are directly proceed to handle terminal
-     v    <-^       management (i.e arrow keys, ctrl keys, delete, backspace, etc ...)
+     |              Special characters are directly proceed to handle terminal
+     |              management (i.e arrow keys, ctrl keys, delete, backspace, etc ...)
+     |              and a new buffer line with only printable characters is reconstructed
+     v    <-^       
   +--+-+  | |
   |line|  | |       (main loop - read keyboard function)
   +--+-+  | |
-     |    v->       after pressing "enter" the buffer line goes to the execution module
+     |    v->       After pressing "enter", the buffer line goes to the execution module
      |              and becomes the command line to execute.
      v              (i.e "ls -l -a | grep a | wc -l ; ls * ; echo 42")
  +---+----+
  |cmd line|         (execution module)
  +--------+
-                    then the command line is parsed by the parser module for each
+                    Then the command line is parsed by the parser module for each
                     ";", "|" and " " characters and executed.
                     
 ";" commands separator
