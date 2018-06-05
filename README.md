@@ -1,4 +1,4 @@
-# Seashell   [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)   
+# Seashell   [![Language: C](https://img.shields.io/badge/Language-C-yellow.svg)] [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)   
 
 ## Introduction
 
