@@ -1,4 +1,7 @@
-# Seashell
+# Seashell   
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)   
+
 ## Introduction
 
 Seashell is a UNIX shell written in C.
