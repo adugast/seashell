@@ -44,7 +44,7 @@ Build the project using CMake (from the build directory):
 $>cmake ..
 ```
 
-Finally, use make to compile the sources and so generate the binary (from the build directory):   
+Finally, use make to compile the sources and so generate the binary (still from the build directory):   
 ```
 $>make
 ```
