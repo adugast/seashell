@@ -6,15 +6,25 @@ Seashell is a UNIX shell written in C.
 
 ## Program Description:
 
-- Seashell can read and execute simple user commands:    
+- Seashell can read and execute simple user commands:   
+```
 Cli>/bin/ls    
+```
+```
 Cli>ls     
+```
 - Also, it can interpret a command with arguments:    
+```
 Cli>ls -l -a   
+```
 - The commands can be combined in a pipe line (forward output to the next command):    
+```
 Cli>ls -l -a | grep main   
+```
 - And can handle pipe line, globing and separator:    
+```
 Cli>ls -l -a | grep a | wc -l ; ls * ; echo 1    
+```
 ...
 
 ## Usage:
