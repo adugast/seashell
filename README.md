@@ -1,19 +1,30 @@
-# Seashell
+# Seashell   [![Language: C](https://img.shields.io/badge/Language-C-green.svg)](https://en.wikipedia.org/wiki/C_(programming_language))  [![Library: ncurses](https://img.shields.io/badge/Library-ncurses-green.svg)](https://www.gnu.org/software/ncurses/)  [![Builder: CMake](https://img.shields.io/badge/Builder-CMake-green.svg)](https://cmake.org/)  [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)   
+
 ## Introduction
 
 Seashell is a UNIX shell written in C.
 
 ## Program Description:
 
-- Seashell can read and execute user commands:</br>
-"/bin/ls"</br>
-"ls"
-- With arguments:</br>
-"ls -l -a"
-- With pipe line:</br>
-"ls -l -a | grep main"
-- With pipe line, globing and separator:</br>
-"ls -l -a | grep a | wc -l ; ls * ; echo 1"</br>
+- Seashell can read and execute simple user commands:   
+```
+Cli>/bin/ls    
+```
+```
+Cli>ls     
+```
+- Also, it can interpret a command with arguments:    
+```
+Cli>ls -l -a   
+```
+- The commands can be combined in a pipe line (forward output to the next command):    
+```
+Cli>ls -l -a | grep main   
+```
+- And can handle pipe line, globing and separator:    
+```
+Cli>ls -l -a | grep a | wc -l ; ls * ; echo 1    
+```
 ...
 
 ## Usage:
@@ -116,6 +127,8 @@ Command parsing:
 
 ## More Info:
 
+* [Terminfo and Termcap](https://www.tldp.org/HOWTO/Text-Terminal-HOWTO-16.html) - Introduction to terminal capabilities and database
+* [man (5) terminfo](https://www.freebsd.org/cgi/man.cgi?query=terminfo&sektion=5) - Terminal capability database
 * [ANSI Escape Sequences](http://ascii-table.com/ansi-escape-sequences.php) - Keycode management
 * [ASCII Flow](http://asciiflow.com/) - Simple web based ascii flow diagram drawing tool
 
