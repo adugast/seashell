@@ -117,6 +117,8 @@ Command parsing:
 
 ## More Info:
 
+* [Terminfo and Termcap](https://www.tldp.org/HOWTO/Text-Terminal-HOWTO-16.html) - Introduction to terminal capabilities and database
+* [man (5) terminfo](https://www.freebsd.org/cgi/man.cgi?query=terminfo&sektion=5) - Terminal capability database
 * [ANSI Escape Sequences](http://ascii-table.com/ansi-escape-sequences.php) - Keycode management
 * [ASCII Flow](http://asciiflow.com/) - Simple web based ascii flow diagram drawing tool
 
