@@ -4,6 +4,33 @@
 
 Seashell is a UNIX shell written in C.
 
+## Setting Up
+
+Clone the repository to retrieve the project:    
+```
+git clone https://github.com/pestbuns/seashell.git
+```
+
+Go in the build directory of Seashell:   
+```
+cd seashell/build/
+```
+
+Build the project using CMake (from the build directory):   
+```
+cmake ..
+```
+
+Finally, compile the sources (from the build directory):   
+```
+make
+```
+
+Launch seashell:   
+```
+./seashell
+```
+
 ## Program Description:
 
 - Seashell can read and execute simple user commands:   
