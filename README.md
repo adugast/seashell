@@ -4,34 +4,7 @@
 
 Seashell is a UNIX shell written in C.
 
-## Setting Up
-
-Clone the repository to retrieve the project:    
-```
-git clone https://github.com/pestbuns/seashell.git
-```
-
-Go in the build directory of Seashell:   
-```
-cd seashell/build/
-```
-
-Build the project using CMake (from the build directory):   
-```
-cmake ..
-```
-
-Finally, compile the sources (from the build directory):   
-```
-make
-```
-
-Launch seashell:   
-```
-./seashell
-```
-
-## Program Description:
+## Program description:
 
 - Seashell can read and execute simple user commands:   
 ```
@@ -53,6 +26,33 @@ Cli>ls -l -a | grep main
 Cli>ls -l -a | grep a | wc -l ; ls * ; echo 1    
 ```
 ...
+
+## Setting up seashell
+
+Clone the project to retrieve the sources:    
+```
+git clone https://github.com/pestbuns/seashell.git
+```
+
+Go in the build directory of seashell:   
+```
+cd seashell/build/
+```
+
+Build the project using CMake (from the build directory):   
+```
+cmake ..
+```
+
+Finally, compile the sources (from the build directory):   
+```
+make
+```
+
+Launch seashell:   
+```
+./seashell
+```
 
 ## Usage:
 
@@ -152,7 +152,7 @@ Command parsing:
 " " split the command with their own arguments
 ```
 
-## More Info:
+## More info:
 
 * [Terminfo and Termcap](https://www.tldp.org/HOWTO/Text-Terminal-HOWTO-16.html) - Introduction to terminal capabilities and database
 * [man (5) terminfo](https://www.freebsd.org/cgi/man.cgi?query=terminfo&sektion=5) - Terminal capability database
