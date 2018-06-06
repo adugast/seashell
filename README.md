@@ -31,33 +31,28 @@ Cli>ls -l -a | grep a | wc -l ; ls * ; echo 1
 
 Clone the project to retrieve the sources:    
 ```
-git clone https://github.com/pestbuns/seashell.git
+$>git clone https://github.com/pestbuns/seashell.git
 ```
 
 Go in the build directory of seashell:   
 ```
-cd seashell/build/
+$>cd seashell/build/
 ```
 
 Build the project using CMake (from the build directory):   
 ```
-cmake ..
+$>cmake ..
 ```
 
-Finally, compile the sources (from the build directory):   
+Finally, use make to compile the sources and so generate the binary (from the build directory):   
 ```
-make
-```
-
-Launch seashell:   
-```
-./seashell
+$>make
 ```
 
 ## Usage:
-
+Launch seashell:   
 ```
-./seashell
+$>./seashell
 ```
 
 ## Output:
