@@ -7,6 +7,7 @@
 #include <wordexp.h>
 
 #include "parser.h"
+#include "builtin.h"
 
 //#define UNIQUEPASTE(x, y)   x##y
 //#define UNIQUEPASTE2(x, y)  UNIQUEPASTE(x, y)
@@ -131,6 +132,12 @@ static int pipeline(char **cmds[])
 static int execute_cmdline(char *cmdline)
 {
     char ***cmds = first(cmdline);
+
+    if (cmds[1] == NULL && is_builtin(cmds[0][0]) == 1) {
+        builtin_manager(cmds[0]);
+        free_cmds(cmds);
+        return 0;
+    }
 
     pid_t pid;
     switch ((pid = fork())) {
