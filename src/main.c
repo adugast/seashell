@@ -142,20 +142,20 @@ static void print_line(const struct shell *ctx, const char *line)
 
 static void get_history_entry(struct shell *ctx, char *buffer)
 {
-    struct list *nodep = NULL;
+//    struct list *nodep = NULL;
     struct history *tmp = NULL;
     int i = 0;
 
-    for_each(&(ctx->history_head), nodep) {
+    list_for_each_entry(tmp, &(ctx->history_head), node) {
         if (i == ctx->history_index) {
-            tmp = container_of(nodep, struct history, node);
+//            tmp = container_of(nodep, struct history, node);
             strncpy(buffer, tmp->entry, BUFFER_LEN);
         }
         i++;
     }
 }
 
-static int add_history_entry(struct list *list, const char *buffer)
+static int add_history_entry(struct list_head *list, const char *buffer)
 {
     struct history *new = calloc(1, sizeof(struct history));
     if (new == NULL) {
@@ -164,14 +164,14 @@ static int add_history_entry(struct list *list, const char *buffer)
 
     strncpy(new->entry, buffer, BUFFER_LEN);
 
-    list_add_head(list, &(new->node));
+    list_add_head(&(new->node), list);
 
     return 0;
 }
 
 void fill_history_list_cb(char *line, __attribute__ ((unused)) size_t line_len, void *ctx)
 {
-    struct list *history_head = (struct list *)(ctx);
+    struct list_head *history_head = (struct list_head *)(ctx);
     add_history_entry(history_head, line);
 }
 
@@ -394,11 +394,12 @@ static void signal_handler(__attribute__((unused)) int signum)
 static int initialize(struct shell **ctx)
 {
     // 1) set signal handler: only for SIGINT atm, see later to extend it
-    struct sigaction action;
+    struct sigaction action = {
+        .sa_handler = signal_handler,
+        .sa_flags = 0
+    };
 
-    action.sa_handler = signal_handler;
     sigemptyset(&action.sa_mask);
-    action.sa_flags = 0;
 
     if (sigaction(SIGINT, &action, NULL) == -1) {
         perror("sigaction");
@@ -475,12 +476,9 @@ static int terminate(struct shell *ctx)
     nc_exit_insert_mode();
 
     struct history *tmp = NULL;
-    struct list *nodep = NULL;
-    for_each(&(ctx->history_head), nodep) {
-        tmp = container_of(nodep, struct history, node);
-        list_delete(nodep);
+    list_for_each_entry(tmp, &(ctx->history_head), node)
         free(tmp);
-    }
+
     close_stream(ctx->history_stream);
 
     // reset the terminal as it was before launching seashell
