@@ -14,7 +14,7 @@
 
 struct history {
     char entry[BUFFER_LEN];
-    struct list node;
+    struct list_head node;
 };
 
 
@@ -23,7 +23,7 @@ struct shell {
     unsigned int pos_x;
     unsigned int line_size;
     int history_index;
-    struct list history_head;
+    struct list_head history_head;
     FILE *history_stream;
     struct termios saved_cfg;
     bool exit;

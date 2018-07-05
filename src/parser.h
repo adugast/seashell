@@ -7,26 +7,26 @@
 
 typedef struct token {
     char *token_str;
-    struct list node;
+    struct list_head node;
 } token_t;
 
 
 typedef struct cmd {
-    struct list token_list;
-    struct list node;
+    struct list_head token_list;
+    struct list_head node;
     unsigned int nb_token;
 } cmd_t;
 
 
 typedef struct cmd_line {
-    struct list cmd_list;
-    struct list node;
+    struct list_head cmd_list;
+    struct list_head node;
     unsigned int nb_cmd;
 } cmd_line_t;
 
 
 typedef struct parser {
-    struct list cmd_line_list;
+    struct list_head cmd_line_list;
 } parser_t;
 
 

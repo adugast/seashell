@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <errno.h>
 
 
 struct builtin_s {
@@ -73,7 +74,7 @@ static int my_cd(char **path)
     }
 
     if (chdir(path[1]) == -1) {
-        perror("chdir");
+        fprintf(stderr, "seashell: cd: %s: %s\n", path[1], strerror(errno));
         return -1;
     }
 
