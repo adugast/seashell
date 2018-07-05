@@ -142,14 +142,13 @@ static void print_line(const struct shell *ctx, const char *line)
 
 static void get_history_entry(struct shell *ctx, char *buffer)
 {
-//    struct list *nodep = NULL;
-    struct history *tmp = NULL;
     int i = 0;
+    struct history *tmp = NULL;
 
     list_for_each_entry(tmp, &(ctx->history_head), node) {
         if (i == ctx->history_index) {
-//            tmp = container_of(nodep, struct history, node);
             strncpy(buffer, tmp->entry, BUFFER_LEN);
+            return;
         }
         i++;
     }
