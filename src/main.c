@@ -474,9 +474,11 @@ static int terminate(struct shell *ctx)
 {
     nc_exit_insert_mode();
 
-    struct history *tmp = NULL;
-    list_for_each_entry(tmp, &(ctx->history_head), node)
-        free(tmp);
+    struct history *pos, *safe;
+    list_for_each_entry_safe(pos, safe, &(ctx->history_head), node) {
+        list_del(&(pos->node));
+        free(pos);
+    }
 
     close_stream(ctx->history_stream);
 
