@@ -5,37 +5,19 @@
 #include "list.h"
 
 
-typedef struct token {
-    char *token_str;
-    struct list_head node;
-} token_t;
-
-
-typedef struct cmd {
-    struct list_head token_list;
-    struct list_head node;
-    unsigned int nb_token;
-} cmd_t;
-
-
-typedef struct cmd_line {
-    struct list_head cmd_list;
-    struct list_head node;
-    unsigned int nb_cmd;
-} cmd_line_t;
-
-
 typedef struct parser {
-    struct list_head cmd_line_list;
+    char *str;
+    struct list_head node;          // node to link the list
+    struct list_head child_head;    // point to the child head
 } parser_t;
 
 
-typedef void (*parser_cb_t)(char *token, void *ctx);
+typedef void (*parser_cb_t)(struct list_head *root, char *token);
 
 
-int init_parser(char *buffer, struct parser *p);
-void deinit_parser(struct parser *p);
-void dump_parser(struct parser *p);
+void parser_init(struct parser *p, char *buffer);
+void parser_deinit(struct parser *p);
+void parser_dump(struct parser *p);
 
 
 #endif /* __PARSER_H__ */

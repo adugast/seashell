@@ -5,93 +5,87 @@
 #include "parser.h"
 
 
-static void foreach_token_parser(char *str, const char *delim, parser_cb_t cb, void *ctx)
+static void foreach_token_parser(struct list_head *root, char *cmd, const char *delim, parser_cb_t cb)
 {
-    char *saveptr;
-    // perhaps do own version of strtok to handle also ;; is command line
-    char *token = strtok_r(str, delim, &saveptr);
-    while (token != NULL) {
-        cb(token, ctx);
-        token = strtok_r(NULL, delim, &saveptr);
+    char *token, *saveptr;
+    for (token = strtok_r(cmd, delim, &saveptr); token; token = strtok_r(NULL, delim, &saveptr))
+        cb(root, token);
+}
+
+
+static parser_t *parser_add_branch(struct list_head *root, char *cmd)
+{
+    parser_t *p = calloc(1, sizeof(parser_t));
+    if (!p) {
+        printf("parser_add_branch failed\n");
+        return NULL;
     }
+
+    init_list(&(p->child_head));
+    init_list(&(p->node));
+    p->str = strdup(cmd);
+    list_add_tail(&(p->node), root);
+
+    return p;
 }
 
 
-static void token_parser_cb(char *token, void *ctx)
+static void token_cb(struct list_head *root, char *cmd)
 {
-    struct list_head *token_list = (struct list_head *)ctx;
-
-    struct token *new = calloc(1, sizeof(struct token));
-    new->token_str = strdup(token);
-
-    list_add_tail(&(new->node), token_list);
+    parser_add_branch(root, cmd);
 }
 
 
-static void cmd_parser_cb(char *cmd, void *ctx)
+static void cmd_cb(struct list_head *root, char *cmd)
 {
-    struct list_head *cmd_list = (struct list_head *)ctx;
-
-    struct cmd *new = calloc(1, sizeof(struct cmd));
-    init_list(&(new->token_list));
-
-    foreach_token_parser(cmd, " ", &token_parser_cb, &(new->token_list));
-
-    list_add_tail(&(new->node), cmd_list);
+    parser_t *p = parser_add_branch(root, cmd);
+    foreach_token_parser(&(p->child_head), cmd, " ", &token_cb);
 }
 
 
-static void cmd_line_parser_cb(char *cmd_line, void *ctx)
+static void cmd_line_cb(struct list_head *root, char *cmd)
 {
-    struct list_head *cmd_line_list = (struct list_head *)ctx;
-
-    struct cmd_line *new = calloc(1, sizeof(struct cmd_line));
-    init_list(&(new->cmd_list));
-
-    foreach_token_parser(cmd_line, "|", &cmd_parser_cb, &(new->cmd_list));
-
-    list_add_tail(&(new->node), cmd_line_list);
+    parser_t *p = parser_add_branch(root, cmd);
+    foreach_token_parser(&(p->child_head), cmd, "|", &cmd_cb);
 }
 
 
-int init_parser(char *buffer, struct parser *p)
+void parser_init(struct parser *p, char *buffer)
 {
-    foreach_token_parser(buffer, ";", &cmd_line_parser_cb, &(p->cmd_line_list));
-    return 0;
+    init_list(&(p->child_head));
+    init_list(&(p->node));
+    foreach_token_parser(&(p->child_head), buffer, ";", &cmd_line_cb);
 }
 
 
-void deinit_parser(struct parser *p)
+void parser_deinit(struct parser *p)
 {
-    struct cmd_line *cl;
-    list_for_each_entry(cl, &(p->cmd_line_list), node) {
-        struct cmd *c;
-        list_for_each_entry(c, &(cl->cmd_list), node) {
-            struct token *t;
-            list_for_each_entry(t, &(c->token_list), node) {
-                free(t->token_str);
-                free(t);
+    parser_t *a, *b, *c;
+    list_for_each_entry(a, &(p->child_head), node) {
+        list_for_each_entry(b, &(a->child_head), node) {
+            list_for_each_entry(c, &(b->child_head), node) {
+                free(c->str);
+                free(c);
             }
-            free(c);
+            free(b->str);
+            free(b);
         }
-        free(cl);
+        free(a->str);
+        free(a);
     }
     free(p);
 }
 
 
-void dump_parser(struct parser *p)
+void parser_dump(struct parser *p)
 {
-    struct cmd_line *cl;
-    struct cmd *c;
-    struct token *t;
-
-    list_for_each_entry(cl, &(p->cmd_line_list), node) {
-        printf("new cmd line\n");
-        list_for_each_entry(c, &(cl->cmd_list), node) {
-            printf("new cmd\n");
-            list_for_each_entry(t, &(c->token_list), node) {
-                printf("token[%s]\n", t->token_str);
+    parser_t *a, *b, *c;
+    list_for_each_entry(a, &(p->child_head), node) {
+        printf("-> cmdline [%s]\n", a->str);
+        list_for_each_entry(b, &(a->child_head), node) {
+            printf("> cmd [%s]\n", b->str);
+            list_for_each_entry(c, &(b->child_head), node) {
+                printf("token [%s]\n", c->str);
             }
         }
     }
