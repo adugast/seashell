@@ -60,23 +60,28 @@ void parser_init(struct parser *p, char *buffer)
 
 void parser_deinit(struct parser *p)
 {
-    parser_t *a, *b, *c;
-    list_for_each_entry(a, &(p->child_head), node) {
-        list_for_each_entry(b, &(a->child_head), node) {
-            list_for_each_entry(c, &(b->child_head), node) {
+    parser_t *a, *b, *c, *s1, *s2, *s3;
+    list_for_each_entry_safe(a, s1, &(p->child_head), node) {
+        list_for_each_entry_safe(b, s2, &(a->child_head), node) {
+            list_for_each_entry_safe(c, s3, &(b->child_head), node) {
                 free(c->str);
+                list_del(&(c->node));
                 free(c);
             }
             free(b->str);
+            list_del(&(b->node));
             free(b);
         }
         free(a->str);
+        list_del(&(a->node));
         free(a);
     }
+
     free(p);
 }
 
 
+/* parser_dump debug function */
 void parser_dump(struct parser *p)
 {
     parser_t *a, *b, *c;
