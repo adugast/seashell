@@ -30,6 +30,14 @@ static parser_t *parser_add_branch(struct list_head *root, char *cmd)
 }
 
 
+static void parser_del_branch(struct parser *p)
+{
+    free(p->str);
+    list_del(&(p->node));
+    free(p);
+}
+
+
 static void token_cb(struct list_head *root, char *cmd)
 {
     parser_add_branch(root, cmd);
@@ -64,17 +72,11 @@ void parser_deinit(struct parser *p)
     list_for_each_entry_safe(a, s1, &(p->child_head), node) {
         list_for_each_entry_safe(b, s2, &(a->child_head), node) {
             list_for_each_entry_safe(c, s3, &(b->child_head), node) {
-                free(c->str);
-                list_del(&(c->node));
-                free(c);
+                parser_del_branch(c);
             }
-            free(b->str);
-            list_del(&(b->node));
-            free(b);
+            parser_del_branch(b);
         }
-        free(a->str);
-        list_del(&(a->node));
-        free(a);
+        parser_del_branch(a);
     }
 
     free(p);
