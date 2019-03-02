@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <getopt.h>
 
+#include "arguments_manager.h"
+
 
 static void print_usage(const char *binary_name)
 {
@@ -10,6 +12,7 @@ static void print_usage(const char *binary_name)
     printf(" -h, --help     : Display this help and exit\n");
     printf(" -v, --version  : Show version information\n");
     printf(" -f, --features : Show seashell features\n");
+    printf(" -r, --remote   : Launch seashell remotely format \"ip:port\"\n");
 }
 
 
@@ -64,22 +67,32 @@ static void print_version()
 }
 
 
-void option_manager(int argc, char *argv[])
+static void args_set_default_config(struct arguments *args)
 {
+    args->remote_addr = "";
+}
+
+
+void args_get_arguments(int argc, char *argv[], struct arguments *args)
+{
+    args_set_default_config(args);
+
     static struct option long_options[] = {
         {"help",        no_argument, 0, 'h'},
         {"version",     no_argument, 0, 'v'},
         {"features",    no_argument, 0, 'f'},
+        {"remote",      required_argument, 0, 'r'},
         {0, 0, 0, 0}
     };
 
-    const char *option_string = "hvf";
+    const char *option_string = "hvfr:";
     int c;
     while ((c = getopt_long(argc, argv, option_string, long_options, NULL)) != -1) {
         switch (c) {
             case 'h': print_usage(argv[0]); exit(EXIT_SUCCESS);
             case 'v': print_version(); exit(EXIT_SUCCESS);
             case 'f': print_features(); exit(EXIT_SUCCESS);
+            case 'r': args->remote_addr = optarg; break;
             default: print_usage(argv[0]); exit(EXIT_SUCCESS);
         }
     }

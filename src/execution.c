@@ -72,6 +72,7 @@ static int pipeline(parser_t *p)
 
     execute_expanded_cmd(pos);
     fprintf(stderr, "seashell: %s: command not found\n", pos->str);
+    abort();
 
     return 0;
 }
