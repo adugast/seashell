@@ -13,6 +13,7 @@
 #include "execution.h"
 #include "ncurses_proxy.h"
 #include "stream_manager.h"
+#include "arguments_manager.h"
 
 
 #define BUFFER_LEN  256
@@ -517,7 +518,12 @@ static int entry()
 
 int main(int argc, char *argv[])
 {
-    option_manager(argc, argv);
+    struct arguments args;
+    args_get_arguments(argc, argv, &args);
+
+    printf("default config:\n");
+    printf("remote_addr[%s]\n", args.remote_addr);
+
     entry(argc, argv);
 
     return 0;
