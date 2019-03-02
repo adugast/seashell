@@ -39,13 +39,11 @@ static void execute_expanded_cmd(parser_t *p)
 
 static int pipeline(parser_t *p)
 {
-    static size_t l = 1;
-    size_t s = list_length(&(p->child_head));
-
     parser_t *pos;
+    size_t s = list_length(&(p->child_head));
     list_for_each_entry(pos, &(p->child_head), node) {
 
-        if (l == s)
+        if (--s == 0)
             break;
 
         int pipefd[2];
@@ -70,13 +68,10 @@ static int pipeline(parser_t *p)
                 dup2(pipefd[0], STDIN_FILENO);
                 break;
         }
-
-        l++;
     }
 
     execute_expanded_cmd(pos);
     fprintf(stderr, "seashell: %s: command not found\n", pos->str);
-    abort();
 
     return 0;
 }
