@@ -40,10 +40,9 @@ static void execute_expanded_cmd(parser_t *p)
 static int pipeline(parser_t *p)
 {
     parser_t *pos;
-    size_t s = list_length(&(p->child_head));
     list_for_each_entry(pos, &(p->child_head), node) {
 
-        if (--s == 0)
+        if ((&(pos->node))->next == &(p->child_head))
             break;
 
         int pipefd[2];
