@@ -15,8 +15,8 @@ add_executable(
     src/main.c
     src/arguments_manager.c
     src/stream_manager.c
+    src/history_manager.c
     src/execution.c
-    src/string_fct.c
     src/ncurses_proxy.c
     src/parser.c
     src/builtin.c

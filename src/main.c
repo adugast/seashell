@@ -12,9 +12,7 @@
 #include "seashell.h"
 #include "execution.h"
 #include "ncurses_proxy.h"
-#include "stream_manager.h"
 #include "arguments_manager.h"
-
 
 #define BUFFER_LEN  256
 
@@ -141,42 +139,6 @@ static void print_line(const struct shell *ctx, const char *line)
 
 /////////////////////////////////////////////////////////////////////
 
-static void get_history_entry(struct shell *ctx, char *buffer)
-{
-    int i = 0;
-    struct history *tmp = NULL;
-
-    list_for_each_entry(tmp, &(ctx->history_head), node) {
-        if (i == ctx->history_index) {
-            strncpy(buffer, tmp->entry, BUFFER_LEN);
-            return;
-        }
-        i++;
-    }
-}
-
-static int add_history_entry(struct list_head *list, const char *buffer)
-{
-    struct history *new = calloc(1, sizeof(struct history));
-    if (new == NULL) {
-        return -1;
-    }
-
-    strncpy(new->entry, buffer, BUFFER_LEN);
-
-    list_add_head(&(new->node), list);
-
-    return 0;
-}
-
-void fill_history_list_cb(char *line, __attribute__ ((unused)) size_t line_len, void *ctx)
-{
-    struct list_head *history_head = (struct list_head *)(ctx);
-    add_history_entry(history_head, line);
-}
-
-/////////////////////////////////////////////////////////////////////
-
 static int insert_char(char *buffer, char c, unsigned int pos)
 {
     size_t len = strlen(buffer);
@@ -247,17 +209,11 @@ static int read_arrow_key(struct shell *ctx, const char c)
 {
     switch (c) {
         case CHAR_A: // arrow up
-            if (ctx->history_index < (int)(list_length(&(ctx->history_head)) - 1)) {
-                ctx->history_index += 1;
-                return 1;
-            }
-            break;
+            hist_set_next_entry(ctx->history_hdl);
+            return 1;
         case CHAR_B: // arrow down
-            if (ctx->history_index > -1) {
-                ctx->history_index -= 1;
-                return 1;
-            }
-            break;
+            hist_set_prev_entry(ctx->history_hdl);
+            return 1;
         case CHAR_C: // arrow right
             cursor_right(ctx);
             break;
@@ -311,8 +267,7 @@ static int read_keyboard(struct shell *ctx, const char *buffer, ssize_t bytes_re
                     write(1, "\r\n", 2);
 
                     if (strcmp(line, "\0") != 0) {
-                        add_history_entry(&(ctx->history_head), line);
-                        write_stream(ctx->history_stream, line);
+                        hist_add_entry(ctx->history_hdl, line);
                         /* execute the command */
                         execution(line);
                     }
@@ -322,7 +277,7 @@ static int read_keyboard(struct shell *ctx, const char *buffer, ssize_t bytes_re
                     /* set usefull variable */
                     memset(line, 0, BUFFER_LEN);
                     set_cursor_pos(ctx, 0);
-                    ctx->history_index = -1;
+                    hist_set_head_entry(ctx->history_hdl);
                     break;
                 case CHAR_ESC:
                     if (buffer[i + 3] == CHAR_DELETE) { /* delete keycode */
@@ -332,13 +287,8 @@ static int read_keyboard(struct shell *ctx, const char *buffer, ssize_t bytes_re
                         break;
                     }
                     if (read_arrow_key(ctx, buffer[i + 2]) != 0) {
-                        if (ctx->history_index == -1) {
-                            memset(line, 0, BUFFER_LEN);
-                            set_cursor_pos(ctx, 0);
-                        } else {
-                            get_history_entry(ctx, line);
-                            set_cursor_pos(ctx, strlen(line));
-                        }
+                        hist_get_current_entry(ctx->history_hdl, line, BUFFER_LEN);
+                        set_cursor_pos(ctx, strlen(line));
                         print_line(ctx, line);
                     }
                     /* arrow key escape sequence is 3 characters long then add 3 to the iterator */
@@ -417,10 +367,10 @@ static int initialize(struct shell **ctx)
     memcpy(new->prompt, "Cli>", PROMPT_LEN);
 
     // 4) initialize history
-    init_list(&(new->history_head));
-    new->history_stream = open_stream(".seashell_history", "a+b");
-    foreach_line_stream(new->history_stream, &fill_history_list_cb, &(new->history_head));
-    new->history_index = -1;
+    new->history_hdl = hist_init(".seashell_history");
+    if (!new->history_hdl) {
+        fprintf(stderr, "hist_init failed\n");
+    }
 
     // 5) save the old terminal configuration to be able to reuse it
     // when leaving the seashell
@@ -475,13 +425,7 @@ static int terminate(struct shell *ctx)
 {
     nc_exit_insert_mode();
 
-    struct history *pos, *safe;
-    list_for_each_entry_safe(pos, safe, &(ctx->history_head), node) {
-        list_del(&(pos->node));
-        free(pos);
-    }
-
-    close_stream(ctx->history_stream);
+    hist_deinit(ctx->history_hdl);
 
     // reset the terminal as it was before launching seashell
     if (set_terminal(&(ctx->saved_cfg)) == -1)
@@ -520,9 +464,6 @@ int main(int argc, char *argv[])
 {
     struct arguments args;
     args_get_arguments(argc, argv, &args);
-
-    printf("default config:\n");
-    printf("remote_addr[%s]\n", args.remote_addr);
 
     entry(argc, argv);
 
