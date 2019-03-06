@@ -37,6 +37,11 @@ void nc_clear_screen();
 void nc_enter_insert_mode();
 void nc_exit_insert_mode();
 
+int nc_get_terminal(struct termios *term);
+int nc_set_terminal(struct termios *term);
+int nc_init_terminal();
+
+
 #ifdef __cplusplus
 }
 #endif

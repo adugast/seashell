@@ -1,13 +1,10 @@
-#include <termios.h>
-#include <unistd.h>
 #include <stdio.h>
+#include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
-#include <stdbool.h>
 #include <stdarg.h>
 #include <signal.h>
 #include <ctype.h>
-#include <sys/wait.h>
 
 #include "seashell.h"
 #include "execution.h"
@@ -36,45 +33,6 @@
 #define CHAR_FF     0x0C // form feed - ctrl-l
 
 /////////////////////////////////////////////////////////////////////
-
-
-static int get_terminal(struct termios *term)
-{
-    return tcgetattr(STDIN_FILENO, term);
-}
-
-static int set_terminal(struct termios *term)
-{
-    return tcsetattr(STDIN_FILENO, TCSADRAIN, term);
-}
-
-static int init_terminal()
-{
-    struct termios term = {0};
-
-    /*!
-     * cfmakeraw() sets the terminal to something like the "raw"  mode  of  the  old
-     * Version 7 terminal driver: input is available character by character, echoing
-     * is disabled, and all special processing of terminal input and output  charac‐
-     * ters is disabled.  The terminal attributes are set as follows:
-     *
-     *      termios_p->c_iflag &= ~(IGNBRK | BRKINT | PARMRK | ISTRIP
-     *                            | INLCR | IGNCR | ICRNL | IXON);
-     *      termios_p->c_oflag &= ~OPOST;
-     *      termios_p->c_lflag &= ~(ECHO | ECHONL | ICANON | ISIG | IEXTEN);
-     *      termios_p->c_cflag &= ~(CSIZE | PARENB);
-     *      termios_p->c_cflag |= CS8;
-     */
-    cfmakeraw(&term);
-
-    term.c_oflag |= (ONLCR);    // map NL to CR-NL on output
-    term.c_oflag |= (OPOST);    // enable implementation-defined processing
-    term.c_lflag |= (ISIG);     // active signals generation
-
-    term.c_cc[VINTR] = 3;       // set SIGINT signal
-
-    return set_terminal(&term);
-}
 
 /* move cursor one space to the left */
 static void cursor_left(struct shell *ctx)
@@ -374,11 +332,11 @@ static int initialize(struct shell **ctx)
 
     // 5) save the old terminal configuration to be able to reuse it
     // when leaving the seashell
-    if (get_terminal(&(new->saved_cfg)) == -1 )
+    if (nc_get_terminal(&(new->saved_cfg)) == -1 )
         return -1;
 
     // 6) initialize current terminal session
-    if (init_terminal() == -1)
+    if (nc_init_terminal() == -1)
         return -1;
 
     // 7) initialize terminfo database
@@ -428,7 +386,7 @@ static int terminate(struct shell *ctx)
     hist_deinit(ctx->history_hdl);
 
     // reset the terminal as it was before launching seashell
-    if (set_terminal(&(ctx->saved_cfg)) == -1)
+    if (nc_set_terminal(&(ctx->saved_cfg)) == -1)
         return -1;
 
     free(ctx);
