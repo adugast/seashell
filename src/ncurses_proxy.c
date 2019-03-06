@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <term.h>
+
 
 /*
  * Proxy API over ncurses library
@@ -105,5 +107,46 @@ void nc_enter_insert_mode()
 void nc_exit_insert_mode()
 {
     print_capability("ei");
+}
+
+
+int nc_get_terminal(struct termios *term)
+{
+    return tcgetattr(STDIN_FILENO, term);
+}
+
+
+int nc_set_terminal(struct termios *term)
+{
+    return tcsetattr(STDIN_FILENO, TCSADRAIN, term);
+}
+
+
+int nc_init_terminal()
+{
+    struct termios term = {0};
+
+    /*!
+     * cfmakeraw() sets the terminal to something like the "raw"  mode  of  the  old
+     * Version 7 terminal driver: input is available character by character, echoing
+     * is disabled, and all special processing of terminal input and output  charac‐
+     * ters is disabled.  The terminal attributes are set as follows:
+     *
+     *      termios_p->c_iflag &= ~(IGNBRK | BRKINT | PARMRK | ISTRIP
+     *                            | INLCR | IGNCR | ICRNL | IXON);
+     *      termios_p->c_oflag &= ~OPOST;
+     *      termios_p->c_lflag &= ~(ECHO | ECHONL | ICANON | ISIG | IEXTEN);
+     *      termios_p->c_cflag &= ~(CSIZE | PARENB);
+     *      termios_p->c_cflag |= CS8;
+     */
+    cfmakeraw(&term);
+
+    term.c_oflag |= (ONLCR);    // map NL to CR-NL on output
+    term.c_oflag |= (OPOST);    // enable implementation-defined processing
+    term.c_lflag |= (ISIG);     // active signals generation
+
+    term.c_cc[VINTR] = 3;       // set SIGINT signal
+
+    return nc_set_terminal(&term);
 }
 
