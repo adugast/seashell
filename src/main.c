@@ -216,13 +216,11 @@ static int read_keyboard(struct shell *ctx, const char *buffer, ssize_t bytes_re
                     backspace_key(ctx, line);
                     break;
                 case CHAR_CR: /* enter keycode */
+                    write(1, "\r\n", 2);
                     if (strcmp("exit", line) == 0) {
                         ctx->exit = 1;
-                        write(1, "\r\n", 2);
                         return EXIT_SUCCESS;
                     }
-
-                    write(1, "\r\n", 2);
 
                     if (strcmp(line, "\0") != 0) {
                         hist_add_entry(ctx->history_hdl, line);

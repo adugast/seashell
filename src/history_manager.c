@@ -84,6 +84,9 @@ void hist_deinit(history_t *hdl)
 
 int hist_add_entry(history_t *hdl, const char *entry)
 {
+    if (!hdl)
+        return -1;
+
     hist_add_entry_list(hdl, entry);
     write_stream(hdl->history_stream, entry);
     return 0;
@@ -92,12 +95,18 @@ int hist_add_entry(history_t *hdl, const char *entry)
 
 void hist_set_head_entry(history_t *hdl)
 {
+    if (!hdl)
+        return;
+
     hdl->current_node = &history_head;
 }
 
 
 void hist_set_prev_entry(history_t *hdl)
 {
+    if (!hdl)
+        return;
+
     if (hdl->current_node != &history_head)
         hdl->current_node = hdl->current_node->prev;
 }
@@ -105,6 +114,9 @@ void hist_set_prev_entry(history_t *hdl)
 
 void hist_set_next_entry(history_t *hdl)
 {
+    if (!hdl)
+        return;
+
     if ((hdl->current_node)->next != &history_head)
         hdl->current_node = (hdl->current_node)->next;
 }
@@ -112,6 +124,9 @@ void hist_set_next_entry(history_t *hdl)
 
 int hist_get_current_entry(history_t *hdl, char *buffer, size_t buffer_len)
 {
+    if (!hdl)
+        return -1;
+
     if (hdl->current_node == &history_head) {
         memset(buffer, 0, buffer_len);
         return 0;
