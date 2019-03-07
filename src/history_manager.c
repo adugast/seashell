@@ -73,6 +73,7 @@ void hist_deinit(history_t *hdl)
     struct history_list *pos, *safe;
     list_for_each_entry_safe(pos, safe, &history_head, node) {
         list_del(&(pos->node));
+        free(pos->entry);
         free(pos);
     }
 
