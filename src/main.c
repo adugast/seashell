@@ -10,6 +10,7 @@
 #include "execution.h"
 #include "ncurses_proxy.h"
 #include "arguments_manager.h"
+#include "autocompletion.h"
 
 #define BUFFER_LEN  256
 
@@ -251,6 +252,18 @@ static int read_keyboard(struct shell *ctx, const char *buffer, ssize_t bytes_re
                     i += 3;
                     break;
                 case CHAR_TAB: /* tab keycode */
+                    write(1, "\r\n", 2);
+                    if (*line != '\0') {
+                        char *ptr = line;
+                        char *pos = strrchr(line, ' ');
+                        if (pos)
+                            ptr = pos + 1;
+                        if (*ptr != ' ')
+                            autocompletion(ptr, ctx->envp);
+
+                    }
+                    print_line(ctx, line);
+                    set_cursor_pos(ctx, strlen(line));
                     break;
                 case CHAR_SOH: /* ctrl-a */
                     cursor_n_left(ctx, ctx->pos_x);
@@ -297,7 +310,7 @@ static void signal_handler(__attribute__((unused)) int signum)
 
 /////////////////////////////////////////////////////////////////////
 
-static int initialize(struct shell **ctx)
+static int initialize(struct shell **ctx, char **envp)
 {
     // 1) set signal handler: only for SIGINT atm, see later to extend it
     struct sigaction action = {
@@ -349,6 +362,8 @@ static int initialize(struct shell **ctx)
     nc_enter_insert_mode();
     set_cursor_pos(new, 0);
 
+    new->envp = envp;
+
     // 8) keep global_save to clean the context in case of SIGINT
     // and retrieve the terminal context
     global_save = new;
@@ -394,11 +409,11 @@ static int terminate(struct shell *ctx)
 
 /////////////////////////////////////////////////////////////////////
 
-static int entry()
+static int entry(char **envp)
 {
     struct shell *ctx = NULL;
 
-    if (initialize(&ctx) == -1) {
+    if (initialize(&ctx, envp) == -1) {
         fprintf(stderr, "initialize:failed\n");
         return -1;
     }
@@ -416,12 +431,12 @@ static int entry()
     return 0;
 }
 
-int main(int argc, char *argv[])
+int main(int argc, char *argv[], char **envp)
 {
     struct arguments args;
     args_get_arguments(argc, argv, &args);
 
-    entry(argc, argv);
+    entry(envp);
 
     return 0;
 }

@@ -16,6 +16,7 @@ add_executable(
     src/arguments_manager.c
     src/stream_manager.c
     src/history_manager.c
+    src/autocompletion.c
     src/execution.c
     src/ncurses_proxy.c
     src/parser.c
