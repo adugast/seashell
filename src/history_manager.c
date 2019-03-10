@@ -18,8 +18,8 @@ struct history_list {
 
 struct history {
     FILE *history_stream;
-    unsigned int threshold; // TODO: Add history limit
-    struct list_head *current_node;
+    unsigned int threshold;         // TODO: Add history limit
+    struct list_head *current_node; // pointer to the current history_list node
 };
 
 

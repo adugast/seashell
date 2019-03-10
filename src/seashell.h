@@ -19,6 +19,7 @@ struct shell {
     history_t *history_hdl;
     struct termios saved_cfg;
     bool exit;
+    char **envp;
 };
 
 
