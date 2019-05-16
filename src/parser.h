@@ -12,10 +12,7 @@ typedef struct parser {
 } parser_t;
 
 
-typedef void (*parser_cb_t)(struct list_head *root, char *token);
-
-
-void parser_init(struct parser *p, char *buffer);
+parser_t *parser_init(const char *buffer);
 void parser_deinit(struct parser *p);
 void parser_dump(struct parser *p);
 

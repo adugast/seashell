@@ -51,6 +51,7 @@ static void del_entry()
     list_for_each_entry_safe(e, safe, &possibilities_head, node) {
         free(e->str);
         list_del(&(e->node));
+        free(e);
     }
 }
 
