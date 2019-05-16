@@ -78,7 +78,7 @@ static int pipeline(parser_t *p)
 
 
 /* execute the cmdline, it can be a simple command or a pipeline */
-static int parser_execute_cmdline(parser_t *p)
+static int execute_parser_cmdline(parser_t *p)
 {
     parser_t *pos;
     list_for_each_entry(pos, &(p->child_head), node) {
@@ -102,17 +102,12 @@ static int parser_execute_cmdline(parser_t *p)
 /* i.e "ls -l -a | grep a | wc -l ; ls *; echo 1" */
 int execution(const char *buffer)
 {
-    char *buffer_save = strdup(buffer);
-
-    parser_t *p = calloc(1, sizeof(parser_t));
+    parser_t *p = parser_init(buffer);
     if (!p)
         return -1;
 
-    parser_init(p, buffer_save);
-    parser_execute_cmdline(p);
+    execute_parser_cmdline(p);
     parser_deinit(p);
-
-    free(buffer_save);
 
     return 0;
 }

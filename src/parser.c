@@ -5,6 +5,9 @@
 #include "parser.h"
 
 
+typedef void (*parser_cb_t)(struct list_head *root, char *token);
+
+
 static void foreach_token_parser(struct list_head *root, char *cmd, const char *delim, parser_cb_t cb)
 {
     char *token, *saveptr;
@@ -58,11 +61,26 @@ static void cmd_line_cb(struct list_head *root, char *cmd)
 }
 
 
-void parser_init(struct parser *p, char *buffer)
+parser_t *parser_init(const char *buffer)
 {
+    if (!buffer)
+        return NULL;
+
+    parser_t *p = calloc(1, sizeof(parser_t));
+    if (!p)
+        return NULL;
+
+    char *buffer_save = strdup(buffer);
+    if (!buffer_save)
+        return NULL;
+
     init_list(&(p->child_head));
     init_list(&(p->node));
-    foreach_token_parser(&(p->child_head), buffer, ";", &cmd_line_cb);
+    foreach_token_parser(&(p->child_head), buffer_save, ";", &cmd_line_cb);
+
+    free(buffer_save);
+
+    return p;
 }
 
 
