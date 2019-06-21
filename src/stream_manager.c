@@ -27,6 +27,9 @@ void close_stream(FILE *stream)
 
 void foreach_line_stream(FILE *stream, getline_stream_cb_t cb, void *ctx)
 {
+    if (!stream || !cb)
+        return;
+
     char *line = NULL;
     size_t stream_len = 0;
     ssize_t line_len;
