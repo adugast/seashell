@@ -5,7 +5,6 @@
 #include <stdbool.h>
 #include <termios.h>
 
-#include "list.h"
 #include "history_manager.h"
 
 
@@ -21,6 +20,9 @@ struct shell {
     bool exit;
     char **envp;
 };
+
+
+int start_shell(int argc, char *argv[], char **envp);
 
 
 #endif /* __SEASHELL_H__ */

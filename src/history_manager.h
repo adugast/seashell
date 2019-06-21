@@ -2,6 +2,9 @@
 #define __HISTORY_MANAGER_H__
 
 
+#include <stddef.h>
+
+
 /*! Abstract type for history interface */
 typedef struct history history_t;
 
