@@ -13,6 +13,7 @@ set(CMAKE_C_FLAGS "-W -Wall -pedantic -std=c99 -std=gnu99 -g")
 add_executable(
     seashell
     src/main.c
+    src/seashell.c
     src/arguments_manager.c
     src/stream_manager.c
     src/history_manager.c
