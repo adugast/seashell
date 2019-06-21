@@ -300,17 +300,17 @@ static int read_keyboard(struct shell *ctx, const char *buffer, ssize_t bytes_re
 // check if there is better solution than global variable
 // keep global_save to clean the context in case of SIGINT
 static struct shell *global_save;
-static int terminate(struct shell *ctx);
+static int shell_deinit(struct shell *ctx);
 static void signal_handler(__attribute__((unused)) int signum)
 {
     write(1, "^C\r\n", 4);
-    terminate(global_save);
+    shell_deinit(global_save);
     exit(EXIT_SUCCESS);
 }
 
 /////////////////////////////////////////////////////////////////////
 
-static struct shell *initialize(struct arguments *args, char **envp)
+static struct shell *shell_init(struct arguments *args, char **envp)
 {
     args = args;
 
@@ -324,14 +324,14 @@ static struct shell *initialize(struct arguments *args, char **envp)
 
     if (sigaction(SIGINT, &action, NULL) == -1) {
         perror("sigaction");
-        return NULL;
+        goto clean;
     }
 
     // 2) create a new user shell context
     struct shell *new = calloc(1, sizeof(struct shell));
-    if (new == NULL) {
+    if (!new) {
         perror("calloc");
-        return NULL;
+        goto clean;
     }
 
     // 3) set the user prompt
@@ -341,22 +341,21 @@ static struct shell *initialize(struct arguments *args, char **envp)
     new->history_hdl = hist_init(".seashell_history");
     if (!new->history_hdl) {
         fprintf(stderr, "hist_init failed\n");
+        goto clean_shell;
     }
 
     // 5) save the old terminal configuration to be able to reuse it
     // when leaving the seashell
-    if (nc_get_terminal(&(new->saved_cfg)) == -1 )
-        return NULL;
+    if (nc_get_terminal(&(new->saved_cfg)) == -1)
+        goto clean_history;
 
     // 6) initialize current terminal session
     if (nc_init_terminal() == -1)
-        return NULL;
+        goto clean_terminal;
 
     // 7) initialize terminfo database
-    if (nc_init_terminal_data() != 1) {
-        terminate(new);
-        return NULL;
-    }
+    if (nc_init_terminal_data() != 1)
+        goto clean_terminal;
 
     // TODO: do the clear_screen at the begining optional
     // do the configuration from cfg file ?
@@ -371,9 +370,18 @@ static struct shell *initialize(struct arguments *args, char **envp)
     global_save = new;
 
     return new;
+
+clean_terminal:
+    nc_set_terminal(&(new->saved_cfg));
+clean_history:
+    hist_deinit(new->history_hdl);
+clean_shell:
+    free(new);
+clean:
+    return NULL;
 }
 
-static int interpret(struct shell *ctx)
+static int shell_start(struct shell *ctx)
 {
     char buffer[BUFFER_LEN] = {0};
     ssize_t bytes_read = 0;
@@ -393,8 +401,11 @@ static int interpret(struct shell *ctx)
     return 0;
 }
 
-static int terminate(struct shell *ctx)
+static int shell_deinit(struct shell *ctx)
 {
+    if (!ctx)
+        return 0;
+
     nc_exit_insert_mode();
 
     hist_deinit(ctx->history_hdl);
@@ -413,22 +424,29 @@ int start_shell(int argc, char *argv[], char **envp)
     struct arguments shell_args;
     args_get_arguments(argc, argv, &shell_args);
 
-    struct shell *ctx = initialize(&shell_args, envp);
+    struct shell *ctx = shell_init(&shell_args, envp);
     if (!ctx) {
-        fprintf(stderr, "initialize:failed\n");
-        return -1;
+        fprintf(stderr, "shell_init:failed\n");
+        goto clean;
     }
 
-    if (interpret(ctx) == -1) {
-        fprintf(stderr, "interpret:failed\n");
-        return -1;
+    if (shell_start(ctx) == -1) {
+        fprintf(stderr, "shell_start:failed\n");
+        goto clean_shell;
     }
 
-    if (terminate(ctx) == -1) {
-        fprintf(stderr, "terminate:failed\n");
-        return -1;
+    if (shell_deinit(ctx) == -1) {
+        fprintf(stderr, "shell_deinit:failed\n");
+        goto rough_clean;
     }
 
     return 0;
+
+rough_clean:
+    free(ctx);
+clean_shell:
+    shell_deinit(ctx);
+clean:
+    return -1;
 }
 

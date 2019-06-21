@@ -25,11 +25,16 @@ struct history {
 
 static int hist_add_entry_list(history_t *hdl, const char *entry)
 {
+    if (!hdl || !entry)
+        goto clean;
+
     struct history_list *new = calloc(1, sizeof(struct history_list));
-    if (new == NULL)
-        return -1;
+    if (!new)
+        goto clean;
 
     new->entry = strdup(entry);
+    if (!new->entry)
+        goto clean_history_list;
 
     list_add_head(&(new->node), &history_head);
 
@@ -37,6 +42,11 @@ static int hist_add_entry_list(history_t *hdl, const char *entry)
     hdl = hdl;
 
     return 0;
+
+clean_history_list:
+    free(new);
+clean:
+    return -1;
 }
 
 
@@ -50,25 +60,33 @@ static void fill_history_list_cb(char *line, __attribute__ ((unused)) size_t lin
 history_t *hist_init(const char *path)
 {
     if (!path)
-        return NULL;
+        goto clean;
 
     history_t *hdl = calloc(1, sizeof(history_t));
     if (!hdl)
-        return NULL;
+        goto clean;
 
     hdl->history_stream = open_stream(path, "a+b");
+    if (!hdl->history_stream)
+        goto clean_history;
+
     foreach_line_stream(hdl->history_stream, &fill_history_list_cb, hdl);
     hist_set_head_entry(hdl);
     hdl->threshold = 0;
 
     return hdl;
+
+clean_history:
+    free(hdl);
+clean:
+    return NULL;
 }
 
 
-void hist_deinit(history_t *hdl)
+int hist_deinit(history_t *hdl)
 {
     if (!hdl)
-        return;
+        return -1;
 
     struct history_list *pos, *safe;
     list_for_each_entry_safe(pos, safe, &history_head, node) {
@@ -79,7 +97,9 @@ void hist_deinit(history_t *hdl)
 
     close_stream(hdl->history_stream);
 
-    return;
+    free(hdl);
+
+    return 0;
 }
 
 
@@ -94,32 +114,37 @@ int hist_add_entry(history_t *hdl, const char *entry)
 }
 
 
-void hist_set_head_entry(history_t *hdl)
+int hist_set_head_entry(history_t *hdl)
 {
     if (!hdl)
-        return;
+        return -1;
 
     hdl->current_node = &history_head;
+    return 0;
 }
 
 
-void hist_set_prev_entry(history_t *hdl)
+int hist_set_prev_entry(history_t *hdl)
 {
     if (!hdl)
-        return;
+        return -1;
 
     if (hdl->current_node != &history_head)
         hdl->current_node = hdl->current_node->prev;
+
+    return 0;
 }
 
 
-void hist_set_next_entry(history_t *hdl)
+int hist_set_next_entry(history_t *hdl)
 {
     if (!hdl)
-        return;
+        return -1;
 
     if ((hdl->current_node)->next != &history_head)
         hdl->current_node = (hdl->current_node)->next;
+
+    return 0;
 }
 
 
