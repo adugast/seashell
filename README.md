@@ -1,4 +1,4 @@
-# Seashell   [![Language: C](https://img.shields.io/badge/Language-C-brightgreen.svg)](https://en.wikipedia.org/wiki/C_(programming_language))  [![Library: ncurses](https://img.shields.io/badge/Library-ncurses-brightgreen.svg)](https://www.gnu.org/software/ncurses/)  [![Builder: CMake](https://img.shields.io/badge/Builder-CMake-brightgreen.svg)](https://cmake.org/)  [![License: MIT](https://img.shields.io/badge/License-MIT-brightgreen.svg)](https://opensource.org/licenses/MIT)   
+# Seashell   [![Language: C](https://img.shields.io/badge/Language-C-brightgreen.svg)](https://en.wikipedia.org/wiki/C_(programming_language))  [![Library: ncurses](https://img.shields.io/badge/Library-ncurses-brightgreen.svg)](https://www.gnu.org/software/ncurses/)  [![Builder: CMake](https://img.shields.io/badge/Builder-CMake-brightgreen.svg)](https://cmake.org/)  [![License: MIT](https://img.shields.io/badge/License-MIT-brightgreen.svg)](https://opensource.org/licenses/MIT)
 
 ## Introduction
 
@@ -6,51 +6,51 @@ Seashell is a UNIX shell written in C.
 
 ## Program description:
 
-- Seashell can read and execute simple user commands:   
+- Seashell can read and execute simple user commands:
 ```
-Cli>/bin/ls    
+Cli>/bin/ls
 ```
 ```
-Cli>ls     
+Cli>ls
 ```
-- Also, it can interpret a command with arguments:    
+- Also, it can interpret a command with arguments:
 ```
-Cli>ls -l -a   
+Cli>ls -l -a
 ```
-- The commands can be combined in a pipe line (forward output to the next command):    
+- The commands can be combined in a pipe line (forward output to the next command):
 ```
-Cli>ls -l -a | grep main   
+Cli>ls -l -a | grep main
 ```
-- And can handle pipe line, globing and separator:    
+- And can handle pipe line, globing and separator:
 ```
-Cli>ls -l -a | grep a | wc -l ; ls * ; echo 1    
+Cli>ls -l -a | grep a | wc -l ; ls * ; echo 1
 ```
 ...
 
 ## Setting up seashell
 
-Clone the project to retrieve the sources:    
+Clone the project to retrieve the sources:
 ```
-$>git clone https://github.com/pestbuns/seashell.git
+$>git clone https://github.com/adugast/seashell.git
 ```
 
-Go in the build directory of seashell:   
+Go in the build directory of seashell:
 ```
 $>cd seashell/build/
 ```
 
-Build the project using CMake (from the build directory):   
+Build the project using CMake (from the build directory):
 ```
 $>cmake ..
 ```
 
-Finally, use make to compile the sources and so generate the binary (still from the build directory):   
+Finally, use make to compile the sources and so generate the binary (still from the build directory):
 ```
 $>make
 ```
 
 ## Usage:
-Launch seashell:   
+Launch seashell:
 ```
 $>./seashell
 ```
@@ -129,7 +129,7 @@ Command parsing:
      |              Special characters are directly proceed to handle terminal
      |              management (i.e arrow keys, ctrl keys, delete, backspace, etc ...)
      |              and a new buffer line with only printable characters is reconstructed
-     v    <-^       
+     v    <-^
   +--+-+  | |
   |line|  | |       (main loop - read keyboard function)
   +--+-+  | |
@@ -141,7 +141,7 @@ Command parsing:
  +--------+
                     Then the command line is parsed by the parser module for each
                     ";", "|" and " " characters and executed.
-                    
+
 ";" commands separator
 "|" split the commands to be executed in a pipeline (output of the executed command is transferred as input for the following command)
 " " split the command with their own arguments
